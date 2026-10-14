@@ -194,6 +194,8 @@ input:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; bor
   color: var(--muted);
 }
 .segmented.four { display: grid; grid-template-columns: repeat(4, auto); }
+.segmented.two { display: grid; grid-template-columns: 1fr 1fr; }
+.segmented.two span { text-align: center; }
 .segmented.four span { text-align: center; }
 @media (max-width: 30rem) {
   .segmented.four { grid-template-columns: 1fr 1fr; align-self: stretch; }
@@ -384,9 +386,9 @@ input:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; bor
   border-radius: 3px;
   border: 1px solid currentColor;
 }
-.tag.both, .tag.capital, .tag.largest { color: var(--good); }
+.tag.both, .tag.capital, .tag.largest, .tag.country { color: var(--good); }
 .tag.major { color: var(--ok); }
-.tag.miss, .tag.timeout, .tag.passed { color: var(--bad); }
+.tag.miss, .tag.wrong, .tag.timeout, .tag.passed { color: var(--bad); }
 .pts { font-family: var(--f-flap); font-weight: 600; font-variant-numeric: tabular-nums; }
 .pts.zero { color: var(--muted); }
 .bonus { font-size: 0.75rem; color: var(--signal); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--f-display); font-weight: 600; }

@@ -91,3 +91,39 @@ test("a whole match can stay on one tier without repeating a country", () => {
     }
   }
 });
+
+test("city clues never give the country away", () => {
+  const clues = (code) => Engine.cluesFor(byCode(code), COUNTRIES).map((c) => c.name);
+  assert.ok(!clues("PAN").includes("Panama City"));
+  assert.ok(!clues("CUB").includes("Santiago de Cuba"));
+  assert.ok(!clues("CRI").includes("Liberia"));
+  assert.ok(clues("USA").includes("Houston"));
+  for (const c of COUNTRIES) assert.ok(Engine.cluesFor(c, COUNTRIES).length > 0, `${c.name} has no clue`);
+});
+
+test("reverse rounds accept every country that has the clue city", () => {
+  for (const tier of [1, 2, 3]) {
+    const used = new Set();
+    for (let round = 0; round < Engine.ROUND_COUNT; round++) {
+      const qs = Engine.pickReverseRound(COUNTRIES, tier, used);
+      assert.equal(qs.length, Engine.COUNTRIES_PER_ROUND);
+      qs.forEach((q) => {
+        assert.ok(q.answers.includes(q.country.code));
+        used.add(q.country.code);
+      });
+    }
+  }
+});
+
+test("judges typed countries", () => {
+  const j = (codes, text) => Engine.judgeCountry(COUNTRIES, codes, text).kind;
+  assert.equal(j(["NGA"], "nigeria"), "country");
+  assert.equal(j(["NGA"], "Niger"), "wrong");
+  assert.equal(j(["AUS"], "Austria"), "wrong");
+  assert.equal(j(["AUS"], "Australa"), "country");
+  assert.equal(j(["MMR"], "Burma"), "country");
+  assert.equal(j(["CIV"], "ivory coast"), "country");
+  assert.equal(j(["GBR"], "England"), "country");
+  assert.equal(j(["ESP", "VEN"], "Venezuela"), "country");
+  assert.equal(j(["USA"], "Atlantis"), "miss");
+});

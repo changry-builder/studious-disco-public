@@ -1,7 +1,7 @@
 // Game rules for Capital Clash: answer matching, scoring and round setup.
 // No DOM access here, so it runs in the browser and under `node --test`.
 
-const POINTS = { both: 4, capital: 3, largest: 3, major: 1, miss: 0 };
+const POINTS = { both: 4, capital: 3, largest: 3, major: 1, country: 3, miss: 0, wrong: 0 };
 const FAST_BONUS = 1;
 const COUNTRIES_PER_ROUND = 5;
 const ROUND_COUNT = 3;
@@ -12,7 +12,9 @@ const KIND_LABELS = {
   capital: "Capital",
   largest: "Largest city",
   major: "Major city",
+  country: "Correct",
   miss: "Not a match",
+  wrong: "Wrong country",
   timeout: "Out of time",
   passed: "Passed",
 };
@@ -145,6 +147,79 @@ function pickRound(countries, tier, usedCodes = new Set(), rng = Math.random, co
   return shuffle(picked, rng);
 }
 
+// ---------- City → Country games ----------
+
+// Names a player can type for a country: its name, anything in brackets, and `aka`.
+function countryNames(country) {
+  const match = country.name.match(/^(.*?)\s*\((.*)\)$/);
+  const main = match ? [match[1], match[2]] : [country.name];
+  return [...main, ...(country.aka || [])];
+}
+
+function cityRoleLabel(roles) {
+  return { both: "Capital and largest city", capital: "Capital", largest: "Largest city", major: "Major city" }[kindFor(roles)];
+}
+
+// Cities that make a fair clue: the name must not give the country away
+// ("Panama City", "Santiago de Cuba") or be a country name itself ("Liberia" in Costa Rica).
+function cluesFor(country, countries) {
+  const countryKeys = new Set(countries.flatMap((c) => countryNames(c).map(normalize)));
+  const own = countryNames(country).map(normalize).filter((n) => n.length >= 4); // skip "US", "UK"
+  return cityTable(country)
+    .filter((city) => {
+      const key = normalize(city.name);
+      if (own.some((n) => key.includes(n))) return false;
+      return ![...city.spellings].some((s) => countryKeys.has(s));
+    })
+    .map((city) => ({ name: city.name, role: cityRoleLabel(city.roles) }));
+}
+
+// Codes of every country that has a city by this name, e.g. Valencia → Spain and Venezuela.
+function countriesWithCity(countries, cityName) {
+  const key = normalize(cityName);
+  return countries.filter((c) => cityTable(c).some((city) => city.spellings.has(key))).map((c) => c.code);
+}
+
+// Pick a round of city clues. Each question keeps its country, the clue, and every
+// country that counts as a right answer.
+function pickReverseRound(countries, tier, usedCodes = new Set(), rng = Math.random, count = COUNTRIES_PER_ROUND) {
+  const withClues = countries.filter((c) => cluesFor(c, countries).length > 0);
+  return pickRound(withClues, tier, usedCodes, rng, count).map((country) => {
+    // Half the time the clue is the capital or largest city, half the time another major city.
+    const options = cluesFor(country, countries);
+    const headline = options.filter((o) => o.role !== "Major city");
+    const others = options.filter((o) => o.role === "Major city");
+    const pool = headline.length && others.length ? (rng() < 0.5 ? headline : others) : options;
+    const clue = pool[Math.floor(rng() * pool.length)];
+    return {
+      country,
+      clue: clue.name,
+      clueRole: clue.role,
+      answers: countriesWithCity(countries, clue.name),
+    };
+  });
+}
+
+// Judge a typed country. Returns { kind: "country" | "wrong" | "miss", country }.
+function judgeCountry(countries, answerCodes, input) {
+  const guess = normalize(input);
+  if (!guess) return { kind: "miss", country: null };
+
+  let best = null;
+  for (const c of countries) {
+    const correct = answerCodes.includes(c.code);
+    for (const name of countryNames(c)) {
+      const spelling = normalize(name);
+      const distance = editDistance(guess, spelling);
+      if (distance > tolerance(spelling.length)) continue;
+      const better = !best || distance < best.distance || (distance === best.distance && correct && !best.correct);
+      if (better) best = { distance, correct, country: countryNames(c)[0] };
+    }
+  }
+  if (!best) return { kind: "miss", country: null };
+  return { kind: best.correct ? "country" : "wrong", country: best.country };
+}
+
 function multiplierForRound(roundIndex) {
   return roundIndex === ROUND_COUNT - 1 ? FINAL_ROUND_MULTIPLIER : 1;
 }
@@ -162,6 +237,10 @@ const Engine = {
   score,
   isTrap,
   pickRound,
+  pickReverseRound,
+  judgeCountry,
+  countryNames,
+  cluesFor,
   multiplierForRound,
   displayName,
 };

@@ -1,4 +1,4 @@
-// Capital Clash UI: pass-and-play screens, the per-country clock and the reveal board.
+// Capital Clash UI: pass-and-play screens, the per-question clock and the reveal board.
 
 (function () {
   const E = Engine;
@@ -9,7 +9,8 @@
     names: ["Player 1", "Player 2"],
     seconds: 20,
     difficulty: "rising", // "rising" (Easy, Medium, Hard) or a fixed tier: "1", "2", "3"
-    rounds: [], // { tier, countries, order: [first, second], turns: [items|null, items|null] }
+    mode: "cities", // "cities": country shown, name a city. "countries": city shown, name the country.
+    rounds: [], // { tier, questions, order: [first, second], turns: [items|null, items|null] }
     roundIndex: 0,
     turnStep: 0, // 0 = first player of the round, 1 = second
   };
@@ -29,6 +30,71 @@
     { value: "2", label: "Medium" },
     { value: "3", label: "Hard" },
   ];
+  const studyKey = (c) => `Capital <b>${esc(names(c.capital))}</b> · Largest <b>${esc(names(c.largest))}</b>`;
+
+  // What changes between the two games. A question is { country } or, in City → Country,
+  // { country, clue, clueRole, answers }.
+  const MODES = {
+    cities: {
+      label: "Country → city",
+      lede: "You get a country. Name a city. Capitals and the biggest city score the most.",
+      ask: "Name a city in",
+      placeholder: "Type a city…",
+      prompt: (q) => q.country.name,
+      chip: (q) => q.country.code,
+      pick: (tier, used) => E.pickRound(COUNTRIES, tier, used).map((country) => ({ country })),
+      judge: (q, text) => {
+        const r = E.judge(q.country, text);
+        return { kind: r.kind, match: r.city };
+      },
+      scored: (kind) => ["capital", "largest", "both"].includes(kind),
+      rowHead: (q) => `
+        <span class="code">${esc(q.country.code)}</span>
+        <span class="cname">${esc(q.country.name)}</span>${E.isTrap(q.country) ? `<span class="trap">Trap</span>` : ""}
+        <span class="key">${studyKey(q.country)}</span>`,
+      studyNote: "Countries where someone missed both the capital and the largest city.",
+      perfect: "Nobody missed a capital or largest city all game.",
+      rules: (p) => `
+        <tr><td>Capital city</td><td class="num">${p.capital}</td></tr>
+        <tr><td>Most populous city</td><td class="num">${p.largest}</td></tr>
+        <tr><td>Both at once (e.g. Paris for France)</td><td class="num">${p.both}</td></tr>
+        <tr><td>Any other major city</td><td class="num">${p.major}</td></tr>
+        <tr><td>Quick answer (half the clock left, capital or largest)</td><td class="num">+${E.FAST_BONUS}</td></tr>`,
+      tip: "Watch for traps: Australia's capital is not Sydney.",
+    },
+    countries: {
+      label: "City → country",
+      lede: "You get a city. Name the country it's in. Some are capitals, some are a country's second or third city.",
+      ask: "Which country is this in?",
+      placeholder: "Type a country…",
+      prompt: (q) => q.clue,
+      chip: (q, i) => `#${i + 1}`,
+      pick: (tier, used) => E.pickReverseRound(COUNTRIES, tier, used),
+      judge: (q, text) => {
+        const r = E.judgeCountry(COUNTRIES, q.answers, text);
+        return { kind: r.kind, match: r.country };
+      },
+      scored: (kind) => kind === "country",
+      rowHead: (q) => {
+        const also = q.answers
+          .filter((code) => code !== q.country.code)
+          .map((code) => E.countryNames(COUNTRIES.find((c) => c.code === code))[0]);
+        return `
+        <span class="cname">${esc(q.clue)}</span>
+        <span class="key">${esc(q.clueRole)} of <b>${esc(q.country.name)}</b>${
+          also.length ? ` · also a city in <b>${esc(also.join(", "))}</b>` : ""
+        }</span>`;
+      },
+      studyNote: "Cities someone couldn't place.",
+      perfect: "Nobody misplaced a city all game.",
+      rules: (p) => `
+        <tr><td>Right country</td><td class="num">${p.country}</td></tr>
+        <tr><td>Quick answer (half the clock left)</td><td class="num">+${E.FAST_BONUS}</td></tr>`,
+      tip: "Some city names exist in more than one country. Valencia is in Spain and Venezuela; either counts.",
+    },
+  };
+  const mode = () => MODES[state.mode];
+
   const tierForRound = (r) => (state.difficulty === "rising" ? r + 1 : Number(state.difficulty));
   const round = () => state.rounds[state.roundIndex];
   const names = (list) => list.map(E.displayName).join(" / ");
@@ -97,25 +163,38 @@
       if (Array.isArray(saved.names) && saved.names.length === 2) state.names = saved.names.map(String);
       if ([15, 20].includes(saved.seconds)) state.seconds = saved.seconds;
       if (DIFFICULTIES.some((d) => d.value === saved.difficulty)) state.difficulty = saved.difficulty;
+      if (MODES[saved.mode]) state.mode = saved.mode;
     }
   } catch (e) {}
 
   function savePrefs() {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ names: state.names, seconds: state.seconds, difficulty: state.difficulty }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ names: state.names, seconds: state.seconds, difficulty: state.difficulty, mode: state.mode }));
     } catch (e) {}
   }
 
   // ---------- setup ----------
 
+  function rulesHTML(m) {
+    return `
+          <h2 class="section-title">Scoring</h2>
+          <table class="fare"><tbody>${m.rules(E.POINTS)}</tbody></table>
+          <ul class="fine">
+            <li>${E.ROUND_COUNT} rounds of ${E.COUNTRIES_PER_ROUND} questions. The last round counts double.</li>
+            <li>Easy → Hard gets tougher each round. Pick Easy, Medium or Hard to stay at one level all game.</li>
+            <li>Each question has its own clock. Skip one and its clock pauses until you come back.</li>
+            <li>One answer per question. Spelling slips and missing accents are forgiven.</li>
+            <li>${m.tip}</li>
+          </ul>`;
+  }
+
   function renderSetup() {
-    const p = E.POINTS;
     show(`
       <section class="screen setup">
         <header class="marquee">
           <p class="eyebrow">Departures · 2 players · 1 device</p>
           <h1 class="board-title">${flapHTML("Capital Clash")}</h1>
-          <p class="lede">You get a country. Name a city. Capitals and the biggest city score the most. Take turns on the same device; neither of you sees the other's answers until the round is over.</p>
+          <p class="lede"><span id="mode-lede">${mode().lede}</span> Take turns on the same device; neither of you sees the other's answers until the round is over.</p>
         </header>
 
         <form class="panel" id="setup-form" autocomplete="off">
@@ -131,7 +210,19 @@
           </div>
 
           <fieldset class="field">
-            <legend class="label">Seconds per country</legend>
+            <legend class="label">Game</legend>
+            <div class="segmented two" role="radiogroup">
+              ${Object.entries(MODES)
+                .map(
+                  ([value, m]) => `
+                <label><input type="radio" name="mode" id="mode-${value}" value="${value}" ${state.mode === value ? "checked" : ""}/><span>${m.label}</span></label>`
+                )
+                .join("")}
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend class="label">Seconds per question</legend>
             <div class="segmented" role="radiogroup">
               ${[15, 20]
                 .map(
@@ -155,32 +246,23 @@
           <button class="btn primary big" type="submit">Board the flight</button>
         </form>
 
-        <section class="panel rules">
-          <h2 class="section-title">Scoring</h2>
-          <table class="fare">
-            <tbody>
-              <tr><td>Capital city</td><td class="num">${p.capital}</td></tr>
-              <tr><td>Most populous city</td><td class="num">${p.largest}</td></tr>
-              <tr><td>Both at once (e.g. Paris for France)</td><td class="num">${p.both}</td></tr>
-              <tr><td>Any other major city</td><td class="num">${p.major}</td></tr>
-              <tr><td>Quick answer (half the clock left, capital or largest)</td><td class="num">+${E.FAST_BONUS}</td></tr>
-            </tbody>
-          </table>
-          <ul class="fine">
-            <li>${E.ROUND_COUNT} rounds of ${E.COUNTRIES_PER_ROUND} countries. The last round counts double.</li>
-            <li>Easy → Hard gets tougher each round. Pick Easy, Medium or Hard to stay at one level all game.</li>
-            <li>Each country has its own clock. Skip one and its clock pauses until you come back.</li>
-            <li>One answer per country. Spelling slips and missing accents are forgiven.</li>
-            <li>Watch for traps: Australia's capital is not Sydney.</li>
-          </ul>
-        </section>
+        <section class="panel rules" id="rules">${rulesHTML(mode())}</section>
       </section>`);
+
+    app.querySelectorAll('input[name="mode"]').forEach((radio) =>
+      radio.addEventListener("change", () => {
+        const m = MODES[radio.value];
+        document.getElementById("mode-lede").textContent = m.lede;
+        document.getElementById("rules").innerHTML = rulesHTML(m);
+      })
+    );
 
     document.getElementById("setup-form").addEventListener("submit", (e) => {
       e.preventDefault();
       state.names = [0, 1].map((i) => document.getElementById(`name-${i}`).value.trim() || `Player ${i + 1}`);
       state.seconds = Number(app.querySelector('input[name="seconds"]:checked').value);
       state.difficulty = app.querySelector('input[name="difficulty"]:checked').value;
+      state.mode = app.querySelector('input[name="mode"]:checked').value;
       savePrefs();
       startMatch();
     });
@@ -191,9 +273,9 @@
     state.rounds = [];
     for (let r = 0; r < E.ROUND_COUNT; r++) {
       const tier = tierForRound(r);
-      const countries = E.pickRound(COUNTRIES, tier, used);
-      countries.forEach((c) => used.add(c.code));
-      state.rounds.push({ tier, countries, order: r % 2 === 0 ? [0, 1] : [1, 0], turns: [null, null] });
+      const questions = mode().pick(tier, used);
+      questions.forEach((q) => used.add(q.country.code));
+      state.rounds.push({ tier, questions, order: r % 2 === 0 ? [0, 1] : [1, 0], turns: [null, null] });
     }
     state.roundIndex = 0;
     state.turnStep = 0;
@@ -218,7 +300,8 @@
         <h1 class="gate">Now boarding<br />${playerTag(player)}</h1>
         <p class="lede">Hand the device to ${esc(state.names[player])}. ${esc(state.names[other])}, no peeking.</p>
         <ul class="ticket">
-          <li><span class="label">Countries</span><span>${E.COUNTRIES_PER_ROUND}</span></li>
+          <li><span class="label">Game</span><span>${mode().label}</span></li>
+          <li><span class="label">Questions</span><span>${E.COUNTRIES_PER_ROUND}</span></li>
           <li><span class="label">Clock</span><span>${state.seconds}s each</span></li>
           <li><span class="label">Skip</span><span><kbd>Tab</kbd></span></li>
           <li><span class="label">Lock in</span><span><kbd>Enter</kbd></span></li>
@@ -236,8 +319,8 @@
       player,
       limit,
       cur: 0,
-      items: round().countries.map((country) => ({
-        country,
+      items: round().questions.map((q) => ({
+        q,
         left: limit,
         status: "pending", // pending | answered | timeout | passed
         draft: "",
@@ -266,15 +349,15 @@
         <ol class="chips" id="chips"></ol>
 
         <div class="stage">
-          <p class="eyebrow">Name a city in</p>
+          <p class="eyebrow">${mode().ask}</p>
           <h1 class="board-title country" id="country" aria-live="polite"></h1>
           <div class="clock" aria-hidden="true"><div class="clock-fill" id="clock-fill"></div></div>
           <p class="clock-num" id="clock-num"></p>
         </div>
 
         <form class="answer" id="answer-form" autocomplete="off">
-          <label class="sr-only" for="answer">Your city</label>
-          <input id="answer" placeholder="Type a city…" spellcheck="false" autocapitalize="words" />
+          <label class="sr-only" for="answer">Your answer</label>
+          <input id="answer" placeholder="${mode().placeholder}" spellcheck="false" autocapitalize="words" />
           <div class="answer-actions">
             <button class="btn ghost" type="button" id="skip">Skip</button>
             <button class="btn primary" type="submit">Lock in</button>
@@ -313,8 +396,9 @@
   function showCurrent() {
     const item = turn.items[turn.cur];
     const countryEl = document.getElementById("country");
-    countryEl.innerHTML = flapHTML(item.country.name);
-    countryEl.classList.toggle("long", item.country.name.length > 16);
+    const prompt = mode().prompt(item.q);
+    countryEl.innerHTML = flapHTML(prompt);
+    countryEl.classList.toggle("long", prompt.length > 16);
     animateFlaps(countryEl);
     const input = document.getElementById("answer");
     input.value = item.draft;
@@ -335,8 +419,8 @@
         const pickable = it.status === "pending" && !current;
         return `<li>
           <button type="button" class="chip ${it.status} ${current ? "current" : ""}" data-index="${i}" ${pickable ? "" : "disabled"}
-            aria-label="Country ${i + 1}: ${status}">
-            <span class="chip-code">${esc(it.country.code)}</span>
+            aria-label="Question ${i + 1}: ${status}">
+            <span class="chip-code">${esc(mode().chip(it.q, i))}</span>
             <span class="chip-status">${status}</span>
           </button>
         </li>`;
@@ -376,7 +460,7 @@
     if (item.left <= 0) {
       item.left = 0;
       item.status = "timeout";
-      item.result = { kind: "timeout", city: null };
+      item.result = { kind: "timeout", match: null };
       advance();
       return;
     }
@@ -391,7 +475,7 @@
     if (!text) return;
     item.answer = text;
     item.status = "answered";
-    item.result = E.judge(item.country, text);
+    item.result = mode().judge(item.q, text);
     item.points = E.score(item.result.kind, {
       fast: item.left >= turn.limit / 2,
       multiplier: E.multiplierForRound(state.roundIndex),
@@ -405,12 +489,12 @@
     } else {
       const item = turn.items[turn.cur];
       item.status = "passed";
-      item.result = { kind: "passed", city: null };
+      item.result = { kind: "passed", match: null };
       advance();
     }
   }
 
-  // Move to the next unfinished country after the current one, wrapping round.
+  // Move to the next unfinished question after the current one, wrapping round.
   function advance() {
     const n = turn.items.length;
     for (let step = 1; step <= n; step++) {
@@ -442,7 +526,8 @@
   function answerCell(it, player) {
     const kind = it.result.kind;
     const said = it.answer ? `<span class="said">${esc(it.answer)}</span>` : `<span class="said none">—</span>`;
-    const matched = it.result.city && E.normalize(it.result.city) !== E.normalize(it.answer) ? ` <span class="as">(${esc(it.result.city)})</span>` : "";
+    const m = it.result.match;
+    const matched = m && E.normalize(m) !== E.normalize(it.answer) ? ` <span class="as">(${esc(m)})</span>` : "";
     const pts = it.points.total
       ? `<span class="pts">+${it.points.total}</span>${it.points.bonus ? `<span class="bonus">quick</span>` : ""}`
       : `<span class="pts zero">0</span>`;
@@ -456,17 +541,12 @@
   function renderReveal() {
     const r = round();
     const last = state.roundIndex === E.ROUND_COUNT - 1;
-    const rows = r.countries
-      .map((c, i) => {
+    const rows = r.questions
+      .map((q, i) => {
         const a = r.turns[0][i];
         const b = r.turns[1][i];
-        const trap = E.isTrap(c) ? `<span class="trap">Trap</span>` : "";
         return `<tr style="--i:${i}">
-          <th scope="row">
-            <span class="code">${esc(c.code)}</span>
-            <span class="cname">${esc(c.name)}</span>${trap}
-            <span class="key">Capital <b>${esc(names(c.capital))}</b> · Largest <b>${esc(names(c.largest))}</b></span>
-          </th>
+          <th scope="row">${mode().rowHead(q)}</th>
           <td>${answerCell(a, 0)}</td>
           <td>${answerCell(b, 1)}</td>
         </tr>`;
@@ -494,7 +574,7 @@
 
         <div class="board-wrap">
           <table class="board answers">
-            <thead><tr><th scope="col">Country</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
+            <thead><tr><th scope="col">${state.mode === "cities" ? "Country" : "City"}</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -520,9 +600,9 @@
 
     const study = [];
     state.rounds.forEach((r) =>
-      r.countries.forEach((c, i) => {
-        const missed = [0, 1].filter((p) => !["capital", "largest", "both"].includes(r.turns[p][i].result.kind));
-        if (missed.length) study.push({ c, missed });
+      r.questions.forEach((q, i) => {
+        const missed = [0, 1].filter((p) => !mode().scored(r.turns[p][i].result.kind));
+        if (missed.length) study.push({ q, missed });
       })
     );
 
@@ -551,21 +631,21 @@
           study.length
             ? `<section class="panel">
           <h2 class="section-title">Study list</h2>
-          <p class="fine">Countries where someone missed both the capital and the largest city.</p>
+          <p class="fine">${mode().studyNote}</p>
           <ul class="study">
             ${study
               .map(
-                ({ c, missed }) => `<li>
-              <span class="code">${esc(c.code)}</span>
-              <span class="cname">${esc(c.name)}</span>
-              <span class="key">Capital <b>${esc(names(c.capital))}</b> · Largest <b>${esc(names(c.largest))}</b></span>
+                ({ q, missed }) => `<li>
+              <span class="code">${esc(q.country.code)}</span>
+              <span class="cname">${esc(mode().prompt(q))}</span>
+              <span class="key">${state.mode === "cities" ? studyKey(q.country) : `${esc(q.clueRole)} of <b>${esc(q.country.name)}</b>`}</span>
               <span class="missed">${missed.map(playerTag).join(" ")}</span>
             </li>`
               )
               .join("")}
           </ul>
         </section>`
-            : `<p class="lede">Nobody missed a capital or largest city all game.</p>`
+            : `<p class="lede">${mode().perfect}</p>`
         }
 
         <div class="actions">
