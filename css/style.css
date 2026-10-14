@@ -13,6 +13,8 @@
   --good: #8fd694;
   --ok: #d6c98f;
   --bad: #e07a6f;
+  --sea: #172226;           /* map water */
+  --land: #33454a;          /* map land */
 
   --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --f-body: "Barlow", "Segoe UI", system-ui, sans-serif;
@@ -417,3 +419,76 @@ input:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; bor
   .panel, .stage { padding: var(--s4); }
   .handoff { padding-top: 4vh; }
 }
+
+/* ---------- round map ---------- */
+
+.map { padding: var(--s4); gap: var(--s3); }
+.map-tabs { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.map-tab {
+  font-family: var(--f-flap);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  background: var(--flap);
+  color: var(--muted);
+  cursor: pointer;
+}
+.map-tab:hover { color: var(--ink); border-color: var(--muted); }
+.map-tab.on { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
+.map-tab:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+.map-frame { border-radius: 4px; overflow: hidden; background: var(--flap); }
+.map-svg { display: block; width: 100%; height: auto; }
+.map-sea { fill: var(--sea); }
+.map-grat { fill: none; stroke: var(--rule); stroke-width: 0.5; opacity: 0.5; }
+.map-land { fill: var(--land); stroke: var(--terminal); stroke-width: 0.6; }
+.map-hit { fill: color-mix(in srgb, var(--signal) 45%, var(--land)); stroke: var(--signal); stroke-width: 1; }
+.map-wrong { stroke-width: 1.5; stroke-dasharray: 4 3; }
+.map-wrong.p0 { fill: color-mix(in srgb, var(--p0) 25%, var(--land)); stroke: var(--p0); }
+.map-wrong.p1 { fill: color-mix(in srgb, var(--p1) 25%, var(--land)); stroke: var(--p1); }
+
+.mk-star { fill: var(--signal); stroke: var(--flap); stroke-width: 1.2; }
+.mk-both { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.mk-largest { fill: var(--ink); stroke: var(--flap); stroke-width: 1.2; }
+.mk-minor { fill: var(--muted); stroke: var(--flap); stroke-width: 1; }
+.mk-clue { fill: var(--signal); stroke: var(--flap); stroke-width: 2; }
+.mk-ring { fill: none; stroke-width: 2.5; }
+.mk-ring.p0 { stroke: var(--p0); }
+.mk-ring.p1 { stroke: var(--p1); }
+.mk-label {
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-size: 13px;
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: var(--sea);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+.mk-label.country { font-family: var(--f-display); font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--signal); }
+.mk-label.clue { fill: var(--signal); font-size: 14px; }
+.mk-label.minor { fill: var(--muted); font-weight: 500; font-size: 12px; }
+
+.map-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); font-size: 0.85rem; color: var(--muted); }
+.lg { display: inline-flex; align-items: center; gap: 0.35rem; }
+.lg svg { width: 1.1rem; height: 1.1rem; }
+.lg-swatch { display: inline-block; width: 1rem; height: 0.7rem; border-radius: 2px; border: 1.5px solid; }
+.lg-swatch.map-hit { background: color-mix(in srgb, var(--signal) 45%, var(--land)); border-color: var(--signal); }
+.lg-swatch.map-wrong.p0 { background: color-mix(in srgb, var(--p0) 25%, var(--land)); border: 1.5px dashed var(--p0); }
+.lg-swatch.map-wrong.p1 { background: color-mix(in srgb, var(--p1) 25%, var(--land)); border: 1.5px dashed var(--p1); }
+
+.map-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--signal);
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  cursor: pointer;
+}
+.map-link:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }

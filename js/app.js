@@ -72,7 +72,7 @@
       pick: (tier, used) => E.pickReverseRound(COUNTRIES, tier, used),
       judge: (q, text) => {
         const r = E.judgeCountry(COUNTRIES, q.answers, text);
-        return { kind: r.kind, match: r.country };
+        return { kind: r.kind, match: r.country, code: r.code };
       },
       scored: (kind) => kind === "country",
       rowHead: (q) => {
@@ -546,7 +546,9 @@
         const a = r.turns[0][i];
         const b = r.turns[1][i];
         return `<tr style="--i:${i}">
-          <th scope="row">${mode().rowHead(q)}</th>
+          <th scope="row">${mode().rowHead(q)}
+            <button type="button" class="map-link" data-q="${i}">Show on map</button>
+          </th>
           <td>${answerCell(a, 0)}</td>
           <td>${answerCell(b, 1)}</td>
         </tr>`;
@@ -572,6 +574,8 @@
             .join("")}
         </div>
 
+        <section class="panel map" id="map" aria-label="Round map"></section>
+
         <div class="board-wrap">
           <table class="board answers">
             <thead><tr><th scope="col">${state.mode === "cities" ? "Country" : "City"}</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
@@ -581,6 +585,21 @@
 
         <button class="btn primary big" id="next" autofocus>${last ? "Final results" : `On to round ${state.roundIndex + 2}`}</button>
       </section>`);
+
+    const mapEl = document.getElementById("map");
+    let map = null;
+    try {
+      map = RevealMap.mount(mapEl, { mode: state.mode, round: r, names: state.names });
+    } catch (err) {
+      mapEl.hidden = true; // the answers still work without the map
+    }
+    app.querySelectorAll(".map-link").forEach((btn) => {
+      if (!map) return (btn.hidden = true);
+      btn.addEventListener("click", () => {
+        map.focus(Number(btn.dataset.q));
+        mapEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      });
+    });
 
     document.getElementById("next").addEventListener("click", () => {
       if (last) return renderFinal();

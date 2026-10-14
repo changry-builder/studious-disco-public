@@ -200,7 +200,7 @@ function pickReverseRound(countries, tier, usedCodes = new Set(), rng = Math.ran
   });
 }
 
-// Judge a typed country. Returns { kind: "country" | "wrong" | "miss", country }.
+// Judge a typed country. Returns { kind: "country" | "wrong" | "miss", country, code }.
 function judgeCountry(countries, answerCodes, input) {
   const guess = normalize(input);
   if (!guess) return { kind: "miss", country: null };
@@ -213,11 +213,11 @@ function judgeCountry(countries, answerCodes, input) {
       const distance = editDistance(guess, spelling);
       if (distance > tolerance(spelling.length)) continue;
       const better = !best || distance < best.distance || (distance === best.distance && correct && !best.correct);
-      if (better) best = { distance, correct, country: countryNames(c)[0] };
+      if (better) best = { distance, correct, country: countryNames(c)[0], code: c.code };
     }
   }
   if (!best) return { kind: "miss", country: null };
-  return { kind: best.correct ? "country" : "wrong", country: best.country };
+  return { kind: best.correct ? "country" : "wrong", country: best.country, code: best.code };
 }
 
 function multiplierForRound(roundIndex) {

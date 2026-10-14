@@ -127,3 +127,18 @@ test("judges typed countries", () => {
   assert.equal(j(["ESP", "VEN"], "Venezuela"), "country");
   assert.equal(j(["USA"], "Atlantis"), "miss");
 });
+
+test("every country has an outline and every city has coordinates for the map", () => {
+  const { WORLD } = require("../js/world.js");
+  const { PLACES } = require("../js/places.js");
+  const outlined = new Set(WORLD.features.map((f) => f.id));
+  for (const c of COUNTRIES) {
+    assert.ok(outlined.has(c.code), `${c.name} has no outline`);
+    for (const entry of [...c.capital, ...c.largest, ...c.cities]) {
+      const name = Engine.displayName(entry);
+      const at = (PLACES[c.code] || {})[name];
+      assert.ok(at, `${name} (${c.name}) has no coordinates`);
+      assert.ok(Math.abs(at[0]) <= 180 && Math.abs(at[1]) <= 90, `${name} coordinates out of range`);
+    }
+  }
+});
