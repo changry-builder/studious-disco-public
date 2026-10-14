@@ -8,6 +8,7 @@
   const state = {
     names: ["Player 1", "Player 2"],
     seconds: 20,
+    difficulty: "rising", // "rising" (Easy, Medium, Hard) or a fixed tier: "1", "2", "3"
     rounds: [], // { tier, countries, order: [first, second], turns: [items|null, items|null] }
     roundIndex: 0,
     turnStep: 0, // 0 = first player of the round, 1 = second
@@ -22,6 +23,13 @@
 
   const playerTag = (i) => `<span class="who p${i}">${esc(state.names[i])}</span>`;
   const tierName = (tier) => ["", "Easy", "Medium", "Hard"][tier];
+  const DIFFICULTIES = [
+    { value: "rising", label: "Easy → Hard" },
+    { value: "1", label: "Easy" },
+    { value: "2", label: "Medium" },
+    { value: "3", label: "Hard" },
+  ];
+  const tierForRound = (r) => (state.difficulty === "rising" ? r + 1 : Number(state.difficulty));
   const round = () => state.rounds[state.roundIndex];
   const names = (list) => list.map(E.displayName).join(" / ");
 
@@ -81,6 +89,23 @@
     });
   }
 
+  // Remember the last setup on this device. Storage can be unavailable, so ignore failures.
+  const PREFS_KEY = "capital-clash-setup";
+  try {
+    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || "null");
+    if (saved) {
+      if (Array.isArray(saved.names) && saved.names.length === 2) state.names = saved.names.map(String);
+      if ([15, 20].includes(saved.seconds)) state.seconds = saved.seconds;
+      if (DIFFICULTIES.some((d) => d.value === saved.difficulty)) state.difficulty = saved.difficulty;
+    }
+  } catch (e) {}
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ names: state.names, seconds: state.seconds, difficulty: state.difficulty }));
+    } catch (e) {}
+  }
+
   // ---------- setup ----------
 
   function renderSetup() {
@@ -117,6 +142,16 @@
             </div>
           </fieldset>
 
+          <fieldset class="field">
+            <legend class="label">Difficulty</legend>
+            <div class="segmented four" role="radiogroup">
+              ${DIFFICULTIES.map(
+                (d) => `
+                <label><input type="radio" name="difficulty" id="diff-${d.value}" value="${d.value}" ${state.difficulty === d.value ? "checked" : ""}/><span>${d.label}</span></label>`
+              ).join("")}
+            </div>
+          </fieldset>
+
           <button class="btn primary big" type="submit">Board the flight</button>
         </form>
 
@@ -132,7 +167,8 @@
             </tbody>
           </table>
           <ul class="fine">
-            <li>${E.ROUND_COUNT} rounds of ${E.COUNTRIES_PER_ROUND} countries: Easy, Medium, then Hard at double points.</li>
+            <li>${E.ROUND_COUNT} rounds of ${E.COUNTRIES_PER_ROUND} countries. The last round counts double.</li>
+            <li>Easy → Hard gets tougher each round. Pick Easy, Medium or Hard to stay at one level all game.</li>
             <li>Each country has its own clock. Skip one and its clock pauses until you come back.</li>
             <li>One answer per country. Spelling slips and missing accents are forgiven.</li>
             <li>Watch for traps: Australia's capital is not Sydney.</li>
@@ -144,6 +180,8 @@
       e.preventDefault();
       state.names = [0, 1].map((i) => document.getElementById(`name-${i}`).value.trim() || `Player ${i + 1}`);
       state.seconds = Number(app.querySelector('input[name="seconds"]:checked').value);
+      state.difficulty = app.querySelector('input[name="difficulty"]:checked').value;
+      savePrefs();
       startMatch();
     });
   }
@@ -152,9 +190,10 @@
     const used = new Set();
     state.rounds = [];
     for (let r = 0; r < E.ROUND_COUNT; r++) {
-      const countries = E.pickRound(COUNTRIES, r + 1, used);
+      const tier = tierForRound(r);
+      const countries = E.pickRound(COUNTRIES, tier, used);
       countries.forEach((c) => used.add(c.code));
-      state.rounds.push({ tier: r + 1, countries, order: r % 2 === 0 ? [0, 1] : [1, 0], turns: [null, null] });
+      state.rounds.push({ tier, countries, order: r % 2 === 0 ? [0, 1] : [1, 0], turns: [null, null] });
     }
     state.roundIndex = 0;
     state.turnStep = 0;

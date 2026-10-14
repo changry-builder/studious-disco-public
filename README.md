@@ -7,7 +7,9 @@ Open `index.html` in a browser to play. There's nothing to install or build.
 
 ## How a game works
 
-- **3 rounds**: Easy, Medium, then Hard. Hard counts double.
+- **3 rounds.** The last round counts double.
+- **Difficulty** is chosen at the start: *Easy → Hard* (Easy, Medium, then Hard),
+  or stay at *Easy*, *Medium* or *Hard* for all three rounds.
 - **5 countries per round.** Both players get the same five countries.
 - **Pass and play.** Player 1 takes their turn, then hands over the device. Neither
   player sees the other's answers until both have played. Then the round's answers

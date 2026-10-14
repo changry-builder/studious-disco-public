@@ -76,3 +76,18 @@ test("pickRound returns unique countries from one tier including a trap", () => 
   const picked = Engine.pickRound(COUNTRIES, 1, exclude);
   assert.ok(picked.every((c) => !exclude.has(c.code)));
 });
+
+test("a whole match can stay on one tier without repeating a country", () => {
+  for (const tier of [1, 2, 3]) {
+    const used = new Set();
+    for (let round = 0; round < Engine.ROUND_COUNT; round++) {
+      const picked = Engine.pickRound(COUNTRIES, tier, used);
+      assert.equal(picked.length, Engine.COUNTRIES_PER_ROUND, `tier ${tier} round ${round + 1}`);
+      assert.ok(picked.some(Engine.isTrap), `tier ${tier} round ${round + 1} has a trap`);
+      picked.forEach((c) => {
+        assert.ok(!used.has(c.code));
+        used.add(c.code);
+      });
+    }
+  }
+});

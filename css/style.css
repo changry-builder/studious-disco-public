@@ -180,17 +180,23 @@ input[type="text"], input:not([type]) {
 }
 input:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; border-color: transparent; }
 
-.segmented { display: inline-flex; border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; align-self: flex-start; }
+.segmented { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; align-self: flex-start; max-width: 100%; }
 .segmented label { position: relative; }
 .segmented input { position: absolute; opacity: 0; }
 .segmented span {
   display: block;
-  padding: 0.55rem 1.2rem;
+  padding: 0.55rem 1rem;
   font-family: var(--f-flap);
+  white-space: nowrap;
   font-weight: 600;
   cursor: pointer;
   background: var(--flap);
   color: var(--muted);
+}
+.segmented.four { display: grid; grid-template-columns: repeat(4, auto); }
+.segmented.four span { text-align: center; }
+@media (max-width: 30rem) {
+  .segmented.four { grid-template-columns: 1fr 1fr; align-self: stretch; }
 }
 .segmented input:checked + span { background: var(--signal); color: var(--signal-ink); }
 .segmented input:focus-visible + span { outline: 2px solid var(--signal); outline-offset: -4px; }
