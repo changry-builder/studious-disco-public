@@ -52,6 +52,9 @@ const RevealMap = (function () {
           if (city) city.answeredBy.push(p);
         }
       });
+    } else if (mode === "top3") {
+      q.cities.forEach((name, k) => add(name, { rank: k + 1 }));
+      if (focused) q.country.capital.forEach((e) => add(Engine.displayName(e), { capital: true }));
     } else {
       add(q.clue, { clue: true });
       if (focused) q.country.capital.forEach((e) => add(Engine.displayName(e), { capital: true }));
@@ -63,7 +66,7 @@ const RevealMap = (function () {
       .map(({ p, r }) => ({ p, code: r.code }));
 
     // Headline cities first, so they get the best label spots.
-    const rank = (c) => (c.clue || c.capital || c.largest || c.answeredBy.length ? 0 : 1);
+    const rank = (c) => (c.clue || c.rank || c.capital || c.largest || c.answeredBy.length ? 0 : 1);
     return { code, cities: [...cities.values()].sort((a, b) => rank(a) - rank(b)), wrong };
   }
 
@@ -142,8 +145,8 @@ const RevealMap = (function () {
 
     stops.forEach((s, k) => {
       const country = questions[shown[k]].country;
-      // Country names in the overview of a "name a city" round.
-      if (focus == null && mode === "cities") {
+      // Country names in the overview, except where the city is the question.
+      if (focus == null && mode !== "countries") {
         const f = featureFor(s.code)[0];
         const capital = s.cities.find((c) => c.capital);
         const at = capital ? proj(capital.at) : f && path.centroid(f);
@@ -154,20 +157,23 @@ const RevealMap = (function () {
         if (!at || !isFinite(at[0])) return;
         const [x, y] = at;
         c.answeredBy.forEach((p, n) => marks.push(`<circle class="mk-ring p${p}" cx="${x}" cy="${y}" r="${9 + n * 4}" />`));
-        if (c.clue) marks.push(`<circle class="mk-clue" cx="${x}" cy="${y}" r="6.5" />`);
+        if (c.rank) {
+          marks.push(`<circle class="mk-clue" cx="${x}" cy="${y}" r="7.5" />`);
+          marks.push(`<text class="mk-rank" x="${x}" y="${y + 3.5}" text-anchor="middle">${c.rank}</text>`);
+        } else if (c.clue) marks.push(`<circle class="mk-clue" cx="${x}" cy="${y}" r="6.5" />`);
         else if (c.capital) {
           if (c.largest) marks.push(`<circle class="mk-both" cx="${x}" cy="${y}" r="8.5" />`);
           marks.push(star(x, y, 7));
         } else if (c.largest) marks.push(`<circle class="mk-largest" cx="${x}" cy="${y}" r="4.5" />`);
         else marks.push(`<circle class="mk-minor" cx="${x}" cy="${y}" r="${c.answeredBy.length ? 3.5 : 2.5}" />`);
 
-        const important = c.clue || c.capital || c.largest || c.answeredBy.length;
+        const important = c.clue || c.rank || c.capital || c.largest || c.answeredBy.length;
         if (focus != null || c.clue) labels.push(label(x, y, c.name, c.clue ? "clue" : important ? "" : "minor"));
       });
     });
 
     return `<svg class="map-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of this round's ${
-      mode === "cities" ? "countries" : "cities"
+      mode === "countries" ? "cities" : "countries"
     }">
       <path class="map-sea" d="${path({ type: "Sphere" })}" />
       <path class="map-grat" d="${path(d3.geoGraticule10())}" />
@@ -188,6 +194,13 @@ const RevealMap = (function () {
         <span class="lg"><svg viewBox="0 0 20 20"><circle class="mk-both" cx="10" cy="10" r="8.5" />${star(10, 10, 6)}</svg>Both</span>
         ${ring(0)}${ring(1)}`;
     }
+    if (mode === "top3") {
+      return `
+        <span class="lg"><svg viewBox="0 0 20 20"><circle class="mk-clue" cx="10" cy="10" r="8" /><text class="mk-rank" x="10" y="13.5" text-anchor="middle">1</text></svg>Top 3 cities, 1 = biggest</span>
+        <span class="lg">${starIcon}Capital</span>
+        <span class="lg"><span class="lg-swatch map-hit"></span>The country</span>
+        ${wrong(0)}${wrong(1)}`;
+    }
     return `
       <span class="lg"><svg viewBox="0 0 20 20"><circle class="mk-clue" cx="10" cy="10" r="6" /></svg>The city</span>
       <span class="lg"><span class="lg-swatch map-hit"></span>Its country</span>
@@ -196,7 +209,7 @@ const RevealMap = (function () {
 
   // Draw the map into `el`. Returns { focus(i) } so the answer rows can zoom it.
   function mount(el, { mode, round, names }) {
-    const stopLabel = (q) => (mode === "cities" ? q.country.code : q.clue);
+    const stopLabel = (q) => (mode === "countries" ? q.clue : q.country.code);
     let current = null;
 
     el.innerHTML = `

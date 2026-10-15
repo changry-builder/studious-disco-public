@@ -1,7 +1,8 @@
 // Game rules for Capital Clash: answer matching, scoring and round setup.
 // No DOM access here, so it runs in the browser and under `node --test`.
 
-const POINTS = { both: 4, capital: 3, largest: 3, major: 1, country: 3, miss: 0, wrong: 0 };
+const POINTS = { both: 4, capital: 3, largest: 3, major: 1, country: 3, top1: 5, top2: 3, top3: 1, miss: 0, wrong: 0 };
+const REVEAL_EVERY_MS = 5000; // Top 3 game: a new city appears this often
 const FAST_BONUS = 1;
 const COUNTRIES_PER_ROUND = 5;
 const ROUND_COUNT = 3;
@@ -13,6 +14,9 @@ const KIND_LABELS = {
   largest: "Largest city",
   major: "Major city",
   country: "Correct",
+  top1: "On 1 city",
+  top2: "On 2 cities",
+  top3: "On 3 cities",
   miss: "Not a match",
   wrong: "Wrong country",
   timeout: "Out of time",
@@ -220,6 +224,37 @@ function judgeCountry(countries, answerCodes, input) {
   return { kind: best.correct ? "country" : "wrong", country: best.country, code: best.code };
 }
 
+// ---------- Top 3 cities games ----------
+
+// A country's three biggest cities, biggest first. The city the quiz lists as largest
+// always leads; the rest follow by population. Names that are another country's name
+// ("Liberia" in Costa Rica) are skipped as too confusing.
+function top3For(country, places, countries) {
+  const otherNames = new Set(
+    countries.filter((c) => c !== country).flatMap((c) => countryNames(c).map(normalize))
+  );
+  const pop = (city) => ((places[country.code] || {})[city.name] || [])[2] || 0;
+  return cityTable(country)
+    .filter((city) => ![...city.spellings].some((s) => otherNames.has(s)))
+    .sort((a, b) => b.roles.has("largest") - a.roles.has("largest") || pop(b) - pop(a))
+    .slice(0, 3)
+    .map((city) => city.name);
+}
+
+function pickTop3Round(countries, places, tier, usedCodes = new Set(), rng = Math.random, count = COUNTRIES_PER_ROUND) {
+  const eligible = countries.filter((c) => top3For(c, places, countries).length === 3);
+  return pickRound(eligible, tier, usedCodes, rng, count).map((country) => ({
+    country,
+    cities: top3For(country, places, countries),
+    answers: [country.code],
+  }));
+}
+
+// How many of the three cities are showing after this much time on the question.
+function citiesShown(elapsedMs) {
+  return Math.min(3, 1 + Math.floor(Math.max(0, elapsedMs) / REVEAL_EVERY_MS));
+}
+
 function multiplierForRound(roundIndex) {
   return roundIndex === ROUND_COUNT - 1 ? FINAL_ROUND_MULTIPLIER : 1;
 }
@@ -238,6 +273,10 @@ const Engine = {
   isTrap,
   pickRound,
   pickReverseRound,
+  pickTop3Round,
+  top3For,
+  citiesShown,
+  REVEAL_EVERY_MS,
   judgeCountry,
   countryNames,
   cluesFor,

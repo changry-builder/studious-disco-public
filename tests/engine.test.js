@@ -142,3 +142,33 @@ test("every country has an outline and every city has coordinates for the map", 
     }
   }
 });
+
+test("top 3 rounds list three cities, biggest first, led by the largest city", () => {
+  const { PLACES } = require("../js/places.js");
+  assert.deepEqual(Engine.top3For(byCode("ZAF"), PLACES, COUNTRIES)[0], "Johannesburg");
+  assert.deepEqual(Engine.top3For(byCode("TUR"), PLACES, COUNTRIES), ["Istanbul", "Ankara", "İzmir"]);
+  assert.ok(!Engine.top3For(byCode("CRI"), PLACES, COUNTRIES).includes("Liberia"));
+  for (const tier of [1, 2, 3]) {
+    const used = new Set();
+    for (let round = 0; round < Engine.ROUND_COUNT; round++) {
+      const qs = Engine.pickTop3Round(COUNTRIES, PLACES, tier, used);
+      assert.equal(qs.length, Engine.COUNTRIES_PER_ROUND);
+      qs.forEach((q) => {
+        assert.equal(new Set(q.cities).size, 3, `${q.country.name}: ${q.cities}`);
+        used.add(q.country.code);
+      });
+    }
+  }
+});
+
+test("top 3 reveals a city every 5 seconds and scores fewer clues higher", () => {
+  assert.equal(Engine.citiesShown(0), 1);
+  assert.equal(Engine.citiesShown(4999), 1);
+  assert.equal(Engine.citiesShown(5000), 2);
+  assert.equal(Engine.citiesShown(10000), 3);
+  assert.equal(Engine.citiesShown(19000), 3);
+  assert.equal(Engine.score("top1").total, 5);
+  assert.equal(Engine.score("top2").total, 3);
+  assert.equal(Engine.score("top3").total, 1);
+  assert.equal(Engine.score("top1", { multiplier: 2 }).total, 10);
+});

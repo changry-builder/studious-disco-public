@@ -61,6 +61,7 @@
         <tr><td>Any other major city</td><td class="num">${p.major}</td></tr>
         <tr><td>Quick answer (half the clock left, capital or largest)</td><td class="num">+${E.FAST_BONUS}</td></tr>`,
       tip: "Watch for traps: Australia's capital is not Sydney.",
+      fastBonus: true,
     },
     countries: {
       label: "City → country",
@@ -91,6 +92,34 @@
         <tr><td>Right country</td><td class="num">${p.country}</td></tr>
         <tr><td>Quick answer (half the clock left)</td><td class="num">+${E.FAST_BONUS}</td></tr>`,
       tip: "Some city names exist in more than one country. Valencia is in Spain and Venezuela; either counts.",
+      fastBonus: true,
+    },
+    top3: {
+      label: "Top 3 cities",
+      lede: "You get a country's three biggest cities, one at a time, smallest first. Name the country. The fewer cities you need, the more you score.",
+      ask: "Which country's three biggest cities?",
+      placeholder: "Type a country…",
+      ladder: true,
+      chip: (q, i) => `#${i + 1}`,
+      pick: (tier, used) => E.pickTop3Round(COUNTRIES, PLACES, tier, used),
+      judge: (q, text, shown) => {
+        const r = E.judgeCountry(COUNTRIES, q.answers, text);
+        return { kind: r.kind === "country" ? `top${shown}` : r.kind, match: r.country, code: r.code, shown };
+      },
+      scored: (kind) => /^top/.test(kind),
+      rowHead: (q) => `
+        <span class="code">${esc(q.country.code)}</span>
+        <span class="cname">${esc(q.country.name)}</span>
+        <span class="key">${q.cities.map((c, k) => `${k + 1}. <b>${esc(c)}</b>`).join(" · ")}</span>`,
+      prompt: (q) => q.country.name,
+      studyNote: "Countries someone couldn't name from their three biggest cities.",
+      perfect: "Nobody missed a country all game.",
+      rules: (p) => `
+        <tr><td>Right country with 1 city showing</td><td class="num">${p.top1}</td></tr>
+        <tr><td>With 2 cities showing</td><td class="num">${p.top2}</td></tr>
+        <tr><td>With all 3 showing</td><td class="num">${p.top3}</td></tr>`,
+      tip: `A new city appears every ${E.REVEAL_EVERY_MS / 1000} seconds: the third biggest, then the second, then the biggest.`,
+      fastBonus: false,
     },
   };
   const mode = () => MODES[state.mode];
@@ -211,7 +240,7 @@
 
           <fieldset class="field">
             <legend class="label">Game</legend>
-            <div class="segmented two" role="radiogroup">
+            <div class="segmented three" role="radiogroup">
               ${Object.entries(MODES)
                 .map(
                   ([value, m]) => `
@@ -350,7 +379,7 @@
 
         <div class="stage">
           <p class="eyebrow">${mode().ask}</p>
-          <h1 class="board-title country" id="country" aria-live="polite"></h1>
+          <div class="prompt" id="country" aria-live="polite"></div>
           <div class="clock" aria-hidden="true"><div class="clock-fill" id="clock-fill"></div></div>
           <p class="clock-num" id="clock-num"></p>
         </div>
@@ -393,13 +422,45 @@
     return turn.items.some((it, i) => it.status === "pending" && i !== turn.cur);
   }
 
+  // Top 3 game: how many cities this question is showing.
+  const shownFor = (item) => E.citiesShown(turn.limit - item.left);
+  const RUNG_LABELS = ["Biggest city", "2nd biggest", "3rd biggest"];
+
+  // The three rungs, 3rd biggest on top. Hidden rungs say when they'll appear.
+  function renderLadder(item, animateRank) {
+    const shown = shownFor(item);
+    const el = document.getElementById("country");
+    el.innerHTML = `<ol class="ladder">${[2, 1, 0]
+      .map((rank) => {
+        const visible = 3 - rank <= shown;
+        const name = item.q.cities[rank];
+        const wait = Math.ceil(((3 - rank - 1) * E.REVEAL_EVERY_MS - (turn.limit - item.left)) / 1000);
+        return `<li class="rung ${visible ? "shown" : "hidden"}" data-rank="${rank}">
+          <span class="rung-label">${RUNG_LABELS[rank]}</span>
+          ${
+            visible
+              ? `<span class="board-title rung-name ${name.length > 14 ? "long" : ""}">${flapHTML(name)}</span>`
+              : `<span class="rung-wait">Shows in ${Math.max(1, wait)}s</span>`
+          }
+        </li>`;
+      })
+      .join("")}</ol>`;
+    item.shownRendered = shown;
+    el.querySelectorAll(".rung.shown").forEach((rung) => {
+      if (animateRank == null || Number(rung.dataset.rank) === animateRank) animateFlaps(rung);
+    });
+  }
+
   function showCurrent() {
     const item = turn.items[turn.cur];
     const countryEl = document.getElementById("country");
-    const prompt = mode().prompt(item.q);
-    countryEl.innerHTML = flapHTML(prompt);
-    countryEl.classList.toggle("long", prompt.length > 16);
-    animateFlaps(countryEl);
+    if (mode().ladder) {
+      renderLadder(item);
+    } else {
+      const prompt = mode().prompt(item.q);
+      countryEl.innerHTML = `<h1 class="board-title country ${prompt.length > 16 ? "long" : ""}">${flapHTML(prompt)}</h1>`;
+      animateFlaps(countryEl);
+    }
     const input = document.getElementById("answer");
     input.value = item.draft;
     input.focus();
@@ -434,10 +495,15 @@
     const fill = document.getElementById("clock-fill");
     fill.style.transform = `scaleX(${frac})`;
     fill.classList.toggle("low", item.left <= 5000);
+    const secs = `${Math.ceil(item.left / 1000)}s`;
+    if (mode().ladder) {
+      const shown = shownFor(item);
+      fill.classList.toggle("fast", shown === 1);
+      document.getElementById("clock-num").textContent = `${secs} · worth ${E.POINTS[`top${shown}`]} now`;
+      return;
+    }
     fill.classList.toggle("fast", item.left >= turn.limit / 2);
-    document.getElementById("clock-num").textContent = `${Math.ceil(item.left / 1000)}s${
-      item.left >= turn.limit / 2 ? " · quick bonus live" : ""
-    }`;
+    document.getElementById("clock-num").textContent = `${secs}${item.left >= turn.limit / 2 ? " · quick bonus live" : ""}`;
   }
 
   function startClock() {
@@ -465,8 +531,22 @@
       return;
     }
     renderClock();
+    if (mode().ladder) {
+      const shown = shownFor(item);
+      // Reveal the next city, or just refresh the "shows in" countdowns.
+      renderLadderIfChanged(item, shown);
+    }
     const chip = document.querySelector(`.chip[data-index="${turn.cur}"]`);
     if (chip && item.left <= 5000) chip.classList.add("low");
+  }
+
+  function renderLadderIfChanged(item, shown) {
+    if (shown !== item.shownRendered) return renderLadder(item, 3 - shown);
+    document.querySelectorAll(".rung.hidden").forEach((rung) => {
+      const rank = Number(rung.dataset.rank);
+      const wait = Math.ceil(((3 - rank - 1) * E.REVEAL_EVERY_MS - (turn.limit - item.left)) / 1000);
+      rung.querySelector(".rung-wait").textContent = `Shows in ${Math.max(1, wait)}s`;
+    });
   }
 
   function lockIn() {
@@ -475,9 +555,9 @@
     if (!text) return;
     item.answer = text;
     item.status = "answered";
-    item.result = mode().judge(item.q, text);
+    item.result = mode().judge(item.q, text, mode().ladder ? shownFor(item) : undefined);
     item.points = E.score(item.result.kind, {
-      fast: item.left >= turn.limit / 2,
+      fast: mode().fastBonus && item.left >= turn.limit / 2,
       multiplier: E.multiplierForRound(state.roundIndex),
     });
     advance();
@@ -578,7 +658,7 @@
 
         <div class="board-wrap">
           <table class="board answers">
-            <thead><tr><th scope="col">${state.mode === "cities" ? "Country" : "City"}</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
+            <thead><tr><th scope="col">${state.mode === "countries" ? "City" : "Country"}</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -656,8 +736,14 @@
               .map(
                 ({ q, missed }) => `<li>
               <span class="code">${esc(q.country.code)}</span>
-              <span class="cname">${esc(mode().prompt(q))}</span>
-              <span class="key">${state.mode === "cities" ? studyKey(q.country) : `${esc(q.clueRole)} of <b>${esc(q.country.name)}</b>`}</span>
+              <span class="cname">${esc(state.mode === "countries" ? q.clue : q.country.name)}</span>
+              <span class="key">${
+                state.mode === "cities"
+                  ? studyKey(q.country)
+                  : state.mode === "top3"
+                  ? q.cities.map((c, k) => `${k + 1}. <b>${esc(c)}</b>`).join(" · ")
+                  : `${esc(q.clueRole)} of <b>${esc(q.country.name)}</b>`
+              }</span>
               <span class="missed">${missed.map(playerTag).join(" ")}</span>
             </li>`
               )

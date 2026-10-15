@@ -196,8 +196,11 @@ input:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; bor
   color: var(--muted);
 }
 .segmented.four { display: grid; grid-template-columns: repeat(4, auto); }
-.segmented.two { display: grid; grid-template-columns: 1fr 1fr; }
-.segmented.two span { text-align: center; }
+.segmented.three { display: grid; grid-template-columns: repeat(3, 1fr); align-self: stretch; }
+.segmented.three span { text-align: center; }
+@media (max-width: 30rem) {
+  .segmented.three { grid-template-columns: 1fr; }
+}
 .segmented.four span { text-align: center; }
 @media (max-width: 30rem) {
   .segmented.four { grid-template-columns: 1fr 1fr; align-self: stretch; }
@@ -492,3 +495,24 @@ input:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; bor
   cursor: pointer;
 }
 .map-link:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* ---------- top 3 ladder ---------- */
+
+.ladder { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.rung { display: flex; flex-direction: column; gap: 0.3rem; }
+.rung-label { font-family: var(--f-display); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.rung-name { font-size: clamp(1.15rem, 5vw, 2rem); }
+.rung-name.long { font-size: clamp(0.95rem, 4vw, 1.6rem); }
+.rung.hidden .rung-wait {
+  display: block;
+  font-family: var(--f-flap);
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--muted);
+  padding: 0.45rem 0.6rem;
+  border: 1px dashed var(--rule);
+  border-radius: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.rung[data-rank="0"] .rung-label { color: var(--ink); }
+.mk-rank { font-family: var(--f-flap); font-weight: 600; font-size: 10px; fill: var(--signal-ink); }
