@@ -9,7 +9,8 @@
     names: ["Player 1", "Player 2"],
     seconds: 20,
     difficulty: "rising", // "rising" (Easy, Medium, Hard) or a fixed tier: "1", "2", "3"
-    mode: "cities", // "cities": country shown, name a city. "countries": city shown, name the country.
+    topic: "geo", // "geo" (World geography) or "supplies" (School supplies)
+    mode: "cities", // geography game: "cities", "countries" or "top3"
     rounds: [], // { tier, questions, order: [first, second], turns: [items|null, items|null] }
     roundIndex: 0,
     turnStep: 0, // 0 = first player of the round, 1 = second
@@ -100,6 +101,11 @@
       ask: "Which country's three biggest cities?",
       placeholder: "Type a country…",
       ladder: true,
+      rungs: (q) => [
+        { label: "3rd biggest", text: q.cities[2] },
+        { label: "2nd biggest", text: q.cities[1] },
+        { label: "Biggest city", text: q.cities[0] },
+      ],
       chip: (q, i) => `#${i + 1}`,
       pick: (tier, used) => E.pickTop3Round(COUNTRIES, PLACES, tier, used),
       judge: (q, text, shown) => {
@@ -121,8 +127,44 @@
       tip: `A new city appears every ${E.REVEAL_EVERY_MS / 1000} seconds: the third biggest, then the second, then the biggest.`,
       fastBonus: false,
     },
+    supplies: {
+      topic: "supplies",
+      label: "School supplies",
+      lede: "You get three clues about a school supply, hardest first, one every 5 seconds. Name it. The fewer clues you need, the more you score.",
+      ask: "What's this school supply?",
+      placeholder: "Type an item…",
+      ladder: true,
+      rungs: (q) => q.clues.map((text, k) => ({ label: `Clue ${k + 1}`, text, plain: true })),
+      chip: (q, i) => `#${i + 1}`,
+      pick: (tier, used) => E.pickItems(SUPPLIES, tier, used),
+      judge: (q, text, shown) => {
+        const r = E.judgeItem(SUPPLIES, q.item, text);
+        return { kind: r.kind === "right" ? `top${shown}` : r.kind, match: r.item, shown };
+      },
+      scored: (kind) => /^top/.test(kind),
+      labels: { top1: "On 1 clue", top2: "On 2 clues", top3: "On 3 clues", wrong: "Wrong item" },
+      columnLabel: "Item",
+      map: false,
+      rowHead: (q) => `
+        <span class="cname">${esc(q.item.name)}</span>
+        <span class="key clue-list">${q.clues.map((c, k) => `${k + 1}. ${esc(c)}`).join("<br />")}</span>`,
+      prompt: (q) => q.item.name,
+      studyNote: "Items someone couldn't name.",
+      perfect: "Nobody missed an item all game.",
+      rules: (p) => `
+        <tr><td>Right item after 1 clue</td><td class="num">${p.top1}</td></tr>
+        <tr><td>After 2 clues</td><td class="num">${p.top2}</td></tr>
+        <tr><td>After all 3 clues</td><td class="num">${p.top3}</td></tr>`,
+      tip: "Other names count too: rubber for eraser, Post-it for sticky notes, Sharpie for marker.",
+      fastBonus: false,
+    },
   };
-  const mode = () => MODES[state.mode];
+  const TOPICS = [
+    { value: "geo", label: "World geography" },
+    { value: "supplies", label: "School supplies" },
+  ];
+  const modeFor = (topic, game) => (topic === "supplies" ? MODES.supplies : MODES[game]);
+  const mode = () => modeFor(state.topic, state.mode);
 
   const tierForRound = (r) => (state.difficulty === "rising" ? r + 1 : Number(state.difficulty));
   const round = () => state.rounds[state.roundIndex];
@@ -192,13 +234,14 @@
       if (Array.isArray(saved.names) && saved.names.length === 2) state.names = saved.names.map(String);
       if ([15, 20].includes(saved.seconds)) state.seconds = saved.seconds;
       if (DIFFICULTIES.some((d) => d.value === saved.difficulty)) state.difficulty = saved.difficulty;
-      if (MODES[saved.mode]) state.mode = saved.mode;
+      if (MODES[saved.mode] && !MODES[saved.mode].topic) state.mode = saved.mode;
+      if (TOPICS.some((t) => t.value === saved.topic)) state.topic = saved.topic;
     }
   } catch (e) {}
 
   function savePrefs() {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ names: state.names, seconds: state.seconds, difficulty: state.difficulty, mode: state.mode }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ names: state.names, seconds: state.seconds, difficulty: state.difficulty, mode: state.mode, topic: state.topic }));
     } catch (e) {}
   }
 
@@ -239,9 +282,20 @@
           </div>
 
           <fieldset class="field">
+            <legend class="label">Topic</legend>
+            <div class="segmented two" role="radiogroup">
+              ${TOPICS.map(
+                (t) => `
+                <label><input type="radio" name="topic" id="topic-${t.value}" value="${t.value}" ${state.topic === t.value ? "checked" : ""}/><span>${t.label}</span></label>`
+              ).join("")}
+            </div>
+          </fieldset>
+
+          <fieldset class="field" id="game-field" ${state.topic === "geo" ? "" : "hidden"}>
             <legend class="label">Game</legend>
             <div class="segmented three" role="radiogroup">
               ${Object.entries(MODES)
+                .filter(([, m]) => !m.topic)
                 .map(
                   ([value, m]) => `
                 <label><input type="radio" name="mode" id="mode-${value}" value="${value}" ${state.mode === value ? "checked" : ""}/><span>${m.label}</span></label>`
@@ -278,13 +332,15 @@
         <section class="panel rules" id="rules">${rulesHTML(mode())}</section>
       </section>`);
 
-    app.querySelectorAll('input[name="mode"]').forEach((radio) =>
-      radio.addEventListener("change", () => {
-        const m = MODES[radio.value];
-        document.getElementById("mode-lede").textContent = m.lede;
-        document.getElementById("rules").innerHTML = rulesHTML(m);
-      })
-    );
+    // Keep the intro and scoring in step with the chosen topic and game.
+    const refresh = () => {
+      const topic = app.querySelector('input[name="topic"]:checked').value;
+      const m = modeFor(topic, app.querySelector('input[name="mode"]:checked').value);
+      document.getElementById("game-field").hidden = topic !== "geo";
+      document.getElementById("mode-lede").textContent = m.lede;
+      document.getElementById("rules").innerHTML = rulesHTML(m);
+    };
+    app.querySelectorAll('input[name="mode"], input[name="topic"]').forEach((radio) => radio.addEventListener("change", refresh));
 
     document.getElementById("setup-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -292,6 +348,7 @@
       state.seconds = Number(app.querySelector('input[name="seconds"]:checked').value);
       state.difficulty = app.querySelector('input[name="difficulty"]:checked').value;
       state.mode = app.querySelector('input[name="mode"]:checked').value;
+      state.topic = app.querySelector('input[name="topic"]:checked').value;
       savePrefs();
       startMatch();
     });
@@ -303,7 +360,7 @@
     for (let r = 0; r < E.ROUND_COUNT; r++) {
       const tier = tierForRound(r);
       const questions = mode().pick(tier, used);
-      questions.forEach((q) => used.add(q.country.code));
+      questions.forEach((q) => used.add(q.key || q.country.code));
       state.rounds.push({ tier, questions, order: r % 2 === 0 ? [0, 1] : [1, 0], turns: [null, null] });
     }
     state.roundIndex = 0;
@@ -422,32 +479,30 @@
     return turn.items.some((it, i) => it.status === "pending" && i !== turn.cur);
   }
 
-  // Top 3 game: how many cities this question is showing.
+  // Ladder games (Top 3 cities, School supplies): how many clues this question is showing.
   const shownFor = (item) => E.citiesShown(turn.limit - item.left);
-  const RUNG_LABELS = ["Biggest city", "2nd biggest", "3rd biggest"];
+  const rungWait = (item, step) => Math.max(1, Math.ceil((step * E.REVEAL_EVERY_MS - (turn.limit - item.left)) / 1000));
 
-  // The three rungs, 3rd biggest on top. Hidden rungs say when they'll appear.
-  function renderLadder(item, animateRank) {
+  // The clues in the order they appear. Hidden ones say when they'll show.
+  function renderLadder(item, freshStep) {
     const shown = shownFor(item);
+    const rungs = mode().rungs(item.q);
     const el = document.getElementById("country");
-    el.innerHTML = `<ol class="ladder">${[2, 1, 0]
-      .map((rank) => {
-        const visible = 3 - rank <= shown;
-        const name = item.q.cities[rank];
-        const wait = Math.ceil(((3 - rank - 1) * E.REVEAL_EVERY_MS - (turn.limit - item.left)) / 1000);
-        return `<li class="rung ${visible ? "shown" : "hidden"}" data-rank="${rank}">
-          <span class="rung-label">${RUNG_LABELS[rank]}</span>
-          ${
-            visible
-              ? `<span class="board-title rung-name ${name.length > 14 ? "long" : ""}">${flapHTML(name)}</span>`
-              : `<span class="rung-wait">Shows in ${Math.max(1, wait)}s</span>`
-          }
-        </li>`;
+    el.innerHTML = `<ol class="ladder">${rungs
+      .map((r, k) => {
+        const visible = k < shown;
+        const cls = ["rung", visible ? "shown" : "hidden", k === rungs.length - 1 ? "last" : "", visible && k === freshStep ? "fresh" : ""];
+        const body = !visible
+          ? `<span class="rung-wait">Shows in ${rungWait(item, k)}s</span>`
+          : r.plain
+          ? `<p class="rung-clue">${esc(r.text)}</p>`
+          : `<span class="board-title rung-name ${r.text.length > 14 ? "long" : ""}">${flapHTML(r.text)}</span>`;
+        return `<li class="${cls.join(" ")}" data-step="${k}"><span class="rung-label">${esc(r.label)}</span>${body}</li>`;
       })
       .join("")}</ol>`;
     item.shownRendered = shown;
     el.querySelectorAll(".rung.shown").forEach((rung) => {
-      if (animateRank == null || Number(rung.dataset.rank) === animateRank) animateFlaps(rung);
+      if (freshStep == null || Number(rung.dataset.step) === freshStep) animateFlaps(rung);
     });
   }
 
@@ -541,11 +596,9 @@
   }
 
   function renderLadderIfChanged(item, shown) {
-    if (shown !== item.shownRendered) return renderLadder(item, 3 - shown);
+    if (shown !== item.shownRendered) return renderLadder(item, shown - 1);
     document.querySelectorAll(".rung.hidden").forEach((rung) => {
-      const rank = Number(rung.dataset.rank);
-      const wait = Math.ceil(((3 - rank - 1) * E.REVEAL_EVERY_MS - (turn.limit - item.left)) / 1000);
-      rung.querySelector(".rung-wait").textContent = `Shows in ${Math.max(1, wait)}s`;
+      rung.querySelector(".rung-wait").textContent = `Shows in ${rungWait(item, Number(rung.dataset.step))}s`;
     });
   }
 
@@ -614,7 +667,7 @@
     return `<div class="cell ${kind}">
       <span class="cell-who">${playerTag(player)}</span>
       <div class="said-line">${said}${matched}</div>
-      <div class="verdict"><span class="tag ${kind}">${E.KIND_LABELS[kind]}</span>${pts}</div>
+      <div class="verdict"><span class="tag ${kind}">${(mode().labels || {})[kind] || E.KIND_LABELS[kind]}</span>${pts}</div>
     </div>`;
   }
 
@@ -627,7 +680,7 @@
         const b = r.turns[1][i];
         return `<tr style="--i:${i}">
           <th scope="row">${mode().rowHead(q)}
-            <button type="button" class="map-link" data-q="${i}">Show on map</button>
+            ${mode().map === false ? "" : `<button type="button" class="map-link" data-q="${i}">Show on map</button>`}
           </th>
           <td>${answerCell(a, 0)}</td>
           <td>${answerCell(b, 1)}</td>
@@ -654,11 +707,11 @@
             .join("")}
         </div>
 
-        <section class="panel map" id="map" aria-label="Round map"></section>
+        ${mode().map === false ? "" : `<section class="panel map" id="map" aria-label="Round map"></section>`}
 
         <div class="board-wrap">
           <table class="board answers">
-            <thead><tr><th scope="col">${state.mode === "countries" ? "City" : "Country"}</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
+            <thead><tr><th scope="col">${mode().columnLabel || (state.mode === "countries" ? "City" : "Country")}</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -668,10 +721,12 @@
 
     const mapEl = document.getElementById("map");
     let map = null;
-    try {
-      map = RevealMap.mount(mapEl, { mode: state.mode, round: r, names: state.names });
-    } catch (err) {
-      mapEl.hidden = true; // the answers still work without the map
+    if (mapEl) {
+      try {
+        map = RevealMap.mount(mapEl, { mode: state.mode, round: r, names: state.names });
+      } catch (err) {
+        mapEl.hidden = true; // the answers still work without the map
+      }
     }
     app.querySelectorAll(".map-link").forEach((btn) => {
       if (!map) return (btn.hidden = true);
@@ -735,15 +790,7 @@
             ${study
               .map(
                 ({ q, missed }) => `<li>
-              <span class="code">${esc(q.country.code)}</span>
-              <span class="cname">${esc(state.mode === "countries" ? q.clue : q.country.name)}</span>
-              <span class="key">${
-                state.mode === "cities"
-                  ? studyKey(q.country)
-                  : state.mode === "top3"
-                  ? q.cities.map((c, k) => `${k + 1}. <b>${esc(c)}</b>`).join(" · ")
-                  : `${esc(q.clueRole)} of <b>${esc(q.country.name)}</b>`
-              }</span>
+              <div class="study-head">${mode().rowHead(q)}</div>
               <span class="missed">${missed.map(playerTag).join(" ")}</span>
             </li>`
               )

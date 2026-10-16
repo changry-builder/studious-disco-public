@@ -1,0 +1,82 @@
+// School supplies for the "School supplies" topic.
+//
+// tier:  1 = everyday, 2 = classroom and craft, 3 = science lab, old-school and obscure.
+// aka:   other names that count as right ("rubber" for eraser).
+// clues: three clues, hardest first. One appears every 5 seconds.
+//        A clue must never contain the item's name or one of its other names.
+
+const SUPPLIES = [
+  // ---------- Tier 1: everyday ----------
+  { name: "Pencil", tier: 1, aka: ["Pencils", "Graphite pencil", "No. 2 pencil"], clues: ["Its core is graphite, not lead.", "Often yellow and six-sided, graded HB or No. 2.", "You sharpen it, write with it, and your mistakes rub out."] },
+  { name: "Eraser", tier: 1, aka: ["Rubber", "Erasers", "Pink eraser"], clues: ["First made from natural latex, which gave it its British name.", "Often pink, and sometimes sits on the end of a wooden writing stick.", "Rubs out pencil mistakes."] },
+  { name: "Ruler", tier: 1, aka: ["Rule", "Straightedge", "Measuring stick", "Yardstick", "Meter stick"], clues: ["Usually 12 inches or 30 centimetres long.", "Has markings along its edge, often in two systems of units.", "Draws straight lines and measures length."] },
+  { name: "Scissors", tier: 1, aka: ["Scissor", "Safety scissors", "Pair of scissors"], clues: ["Two blades joined at a pivot; the kids' kind has rounded tips.", "There are special left-handed versions.", "Cuts paper."] },
+  { name: "Glue stick", tier: 1, aka: ["Gluestick", "Glue", "Pritt stick"], clues: ["Twist the base and a solid paste rises out.", "Often goes on purple and dries clear.", "Sticks paper together and comes in a lipstick-shaped tube."] },
+  { name: "Backpack", tier: 1, aka: ["Rucksack", "Bookbag", "Book bag", "School bag", "Schoolbag", "Knapsack"], clues: ["Padded back panel, a front pocket and two adjustable straps.", "Hangs off both shoulders, and some have wheels.", "You carry your books to school on your back in it."] },
+  { name: "Crayon", tier: 1, aka: ["Crayons", "Wax crayon", "Wax crayons", "Crayola"], clues: ["Made of paraffin wax and pigment.", "A famous brand's first box in 1903 held 8 colours.", "Young kids colour with these, and they snap if you press too hard."] },
+  { name: "Notebook", tier: 1, aka: ["Exercise book", "Composition book", "Spiral notebook", "Jotter", "Notebooks"], clues: ["Comes spiral-bound or with a marbled black-and-white cover.", "Its pages are lined, college or wide ruled.", "You take your class notes in it."] },
+  { name: "Pencil sharpener", tier: 1, aka: ["Sharpener", "Sharpner"], clues: ["A small angled blade sits beside a cone-shaped hole.", "Manual in your pencil case, or electric on the teacher's desk.", "Puts a new point on a pencil."] },
+  { name: "Highlighter", tier: 1, aka: ["Highlighters", "Highlighter pen", "Hi-liter"], clues: ["Its fluorescent ink is most often yellow.", "Has a wide chisel tip.", "You run it over text so it stands out."] },
+  { name: "Stapler", tier: 1, aka: ["Staplers", "Swingline"], clues: ["A red one is a running joke in the film Office Space.", "Loaded with a strip of small bent metal wires.", "Joins sheets of paper by punching a wire through them."] },
+  { name: "Calculator", tier: 1, aka: ["Calc", "Graphing calculator", "Scientific calculator"], clues: ["A small solar panel often powers it.", "Texas Instruments makes the graphing kind.", "Does arithmetic for you."] },
+  { name: "Pen", tier: 1, aka: ["Ballpoint", "Ballpoint pen", "Biro", "Pens", "Gel pen"], clues: ["A tiny rolling ball at its tip spreads the ink.", "Comes in blue or black, and you can click it.", "Writes in ink, so you can't rub it out."] },
+  { name: "Paper clip", tier: 1, aka: ["Paperclip", "Paper clips", "Paperclips", "Clip"], clues: ["Microsoft's Office assistant Clippy was one.", "A loop of bent steel wire.", "Holds sheets together without making holes."] },
+  { name: "Folder", tier: 1, aka: ["File folder", "Pocket folder", "Folders", "Manila folder"], clues: ["The manila kind is tan coloured.", "Opens like a book, often with two pockets inside.", "Keeps your loose papers together."] },
+  { name: "Lunch box", tier: 1, aka: ["Lunchbox", "Lunch bag", "Lunch pail"], clues: ["Metal ones from the 1950s and 60s showed TV characters.", "Has a handle and a latch.", "Carries your midday meal."] },
+  { name: "Marker", tier: 1, aka: ["Markers", "Felt tip", "Felt tip pen", "Sharpie", "Magic marker"], clues: ["Its fibrous nib soaks up ink from a reservoir inside.", "Comes in permanent and washable kinds.", "A thick-tipped pen for colouring and posters."] },
+  { name: "Colored pencils", tier: 1, aka: ["Coloured pencils", "Colored pencil", "Coloured pencil", "Color pencils", "Colour pencils", "Pencil crayons"], clues: ["Their cores are wax and pigment instead of graphite.", "Come in sets of 12 or 24, every colour of the rainbow.", "Like crayons, but you sharpen them."] },
+  { name: "Tape", tier: 1, aka: ["Sticky tape", "Scotch tape", "Sellotape", "Adhesive tape", "Clear tape"], clues: ["Its dispenser has a serrated metal edge.", "Scotch is the famous brand.", "A sticky clear strip that comes on a roll."] },
+  { name: "Binder", tier: 1, aka: ["Ring binder", "Three ring binder", "3 ring binder", "Lever arch file", "Binders"], clues: ["Its metal rings snap open, usually three of them.", "A stiff cover with a clear pocket on the front for a title page.", "Holds hole-punched paper."] },
+
+  // ---------- Tier 2: classroom and craft ----------
+  { name: "Protractor", tier: 2, aka: ["Protracter"], clues: ["A semicircle marked from 0 to 180.", "Clear plastic, and part of a geometry set.", "Measures angles in degrees."] },
+  { name: "Compass", tier: 2, aka: ["Compasses", "Drawing compass", "Pair of compasses"], clues: ["One leg has a sharp point; the other holds a pencil.", "Shares its name with a tool for finding north.", "Draws perfect circles."] },
+  { name: "Hole punch", tier: 2, aka: ["Hole puncher", "Paper punch", "Three hole punch", "Punch"], clues: ["Leaves little paper circles in a tray at the bottom.", "Usually makes two or three holes at once.", "Gets paper ready to go in a ring binder."] },
+  { name: "Index cards", tier: 2, aka: ["Index card", "Flash cards", "Flashcards", "Flash card", "Note cards", "Cue cards", "Record cards"], clues: ["Libraries once kept their whole catalogue on them.", "Usually 3 by 5 inches, plain or lined.", "Small rectangles of card for study notes."] },
+  { name: "Pencil case", tier: 2, aka: ["Pencil pouch", "Pencil box", "Pencil tin"], clues: ["A zip pouch or a hinged tin.", "Lives inside your backpack.", "Holds your pens and pencils."] },
+  { name: "Sticky notes", tier: 2, aka: ["Sticky note", "Post-it", "Post-it notes", "Post-its", "Postit", "Post it"], clues: ["Invented at 3M thanks to a glue that was too weak.", "The classic one is canary yellow and 3 inches square.", "Little notes that stick on and peel off."] },
+  { name: "Correction fluid", tier: 2, aka: ["White-out", "Whiteout", "Tipp-Ex", "Tippex", "Liquid Paper", "Correction tape", "Correction pen"], clues: ["Invented by Bette Nesmith Graham, whose son was in the Monkees.", "Shake the bottle, brush it on, and wait for it to dry.", "White liquid you paint over ink mistakes."] },
+  { name: "Graph paper", tier: 2, aka: ["Grid paper", "Squared paper", "Quad paper", "Quad ruled paper"], clues: ["Also called quad-ruled.", "Covered in small squares.", "Used for plotting charts in maths class."] },
+  { name: "School glue", tier: 2, aka: ["White glue", "Glue", "Elmer's glue", "Elmers glue", "Elmers", "PVA glue", "PVA"], clues: ["Elmer's, the famous brand, has a cow on the bottle.", "A white liquid that dries clear.", "Squeeze bottle with an orange cap for gluing crafts."] },
+  { name: "Dry-erase marker", tier: 2, aka: ["Dry erase marker", "Whiteboard marker", "Whiteboard pen", "Expo marker", "Dry erase pen"], clues: ["Its ink is made not to stick to a glossy surface.", "Expo is a well-known brand.", "Writes on a whiteboard and wipes off."] },
+  { name: "Whiteboard", tier: 2, aka: ["White board", "Dry erase board", "Marker board", "Mini whiteboard"], clues: ["Replaced the chalkboard in most classrooms.", "A glossy, shiny white surface.", "You write on it with dry-erase markers and wipe it clean."] },
+  { name: "Chalk", tier: 2, aka: ["Chalk stick", "Chalks", "Sidewalk chalk"], clues: ["Made from calcium carbonate or gypsum.", "It squeaks and leaves dust on your hands.", "White stick for writing on a blackboard."] },
+  { name: "Globe", tier: 2, aka: ["World globe", "Terrestrial globe"], clues: ["Usually tilted 23.5 degrees on its stand.", "Spins on an axis on the teacher's shelf.", "A round model of the Earth."] },
+  { name: "Dictionary", tier: 2, aka: ["Dictionaries", "Merriam-Webster", "Oxford dictionary"], clues: ["Webster and Oxford are famous makers.", "Arranged alphabetically, with guide words at the top of each page.", "The book that tells you what words mean."] },
+  { name: "Clipboard", tier: 2, aka: ["Clip board"], clues: ["A spring-loaded metal clip sits at the top.", "A hard board you can write on while standing up.", "Holds paper firmly when there's no desk."] },
+  { name: "Mechanical pencil", tier: 2, aka: ["Propelling pencil", "Automatic pencil", "Clicky pencil"], clues: ["Takes 0.5 or 0.7 millimetre leads.", "Never needs sharpening.", "Click the top to push out more lead."] },
+  { name: "Watercolors", tier: 2, aka: ["Watercolours", "Watercolor", "Watercolour", "Watercolor paints", "Watercolour paints", "Paint set", "Paints"], clues: ["A tin of dry colour cakes with a little brush.", "You wet them to bring the colour out.", "Art-class colours you mix with water."] },
+  { name: "Paintbrush", tier: 2, aka: ["Paint brush", "Brush", "Paintbrushes"], clues: ["Its bristles are held by a metal ferrule.", "Flat or round, and numbered by size.", "You dip it and paint with it."] },
+  { name: "Lined paper", tier: 2, aka: ["Loose leaf", "Loose-leaf paper", "Loose leaf paper", "Notebook paper", "Ruled paper", "Filler paper"], clues: ["College or wide ruled, with a red margin down the side.", "Sold in packs with three holes punched down the side.", "Paper with horizontal lines for neat writing."] },
+  { name: "Thumbtack", tier: 2, aka: ["Thumb tack", "Drawing pin", "Push pin", "Pushpin", "Tack", "Thumbtacks"], clues: ["A flat round head and a short sharp point.", "You push it in with your thumb.", "Pins papers to a corkboard."] },
+  { name: "Planner", tier: 2, aka: ["Agenda", "Diary", "Student planner", "Homework planner", "Organizer"], clues: ["Has a page for every week of the school year.", "Your school often hands one out on the first day.", "Where you write down your homework."] },
+  { name: "Water bottle", tier: 2, aka: ["Bottle", "Drink bottle", "Drinks bottle", "Reusable bottle"], clues: ["Steel or BPA-free plastic, with a flip-top or straw lid.", "You refill it at the fountain.", "You drink from it during the school day."] },
+  { name: "Headphones", tier: 2, aka: ["Earbuds", "Earphones", "Headset"], clues: ["Over-ear or in-ear.", "On the supply list for computer lab.", "Let you listen without disturbing anyone."] },
+  { name: "Laptop", tier: 2, aka: ["Chromebook", "Computer", "Notebook computer", "Laptop computer"], clues: ["Its battery has to last the whole school day.", "Has a trackpad and a webcam.", "Folds shut and goes in your backpack."] },
+
+  // ---------- Tier 3: science lab, old-school and obscure ----------
+  { name: "Set square", tier: 3, aka: ["Setsquare", "Triangle", "Triangle ruler", "Drafting triangle"], clues: ["Comes in a 45° version and a 30°/60° version.", "Triangular and often made of clear plastic.", "A right-angled ruler for drawing angles."] },
+  { name: "Abacus", tier: 3, aka: ["Counting frame", "Abacuses"], clues: ["Still taught for mental arithmetic in parts of Asia.", "Beads slide along rods in a frame.", "An ancient counting tool."] },
+  { name: "Slide rule", tier: 3, aka: ["Sliderule", "Slipstick"], clues: ["Two logarithmic scales slide against each other.", "Electronic calculators replaced it in the 1970s.", "A ruler-like tool engineers once used to multiply."] },
+  { name: "Fountain pen", tier: 3, aka: ["Fountain pens", "Cartridge pen"], clues: ["Its split metal nib draws ink up by capillary action.", "Still required in many European schools; filled from a cartridge.", "An old-fashioned refillable ink pen."] },
+  { name: "Inkwell", tier: 3, aka: ["Ink well", "Ink pot", "Inkpot", "Ink bottle"], clues: ["Old school desks had a round hole to hold one.", "You dipped a quill or nib in it.", "A small pot of ink."] },
+  { name: "Slate", tier: 3, aka: ["Writing slate", "Chalk slate"], clues: ["Victorian pupils wrote on one with a stylus.", "A small piece of dark stone in a wooden frame.", "An old-fashioned personal chalkboard."] },
+  { name: "Blotting paper", tier: 3, aka: ["Blotter", "Blotting pad"], clues: ["Very absorbent, often pink or white.", "Kept beside a fountain pen.", "Soaks up wet ink."] },
+  { name: "Stencil", tier: 3, aka: ["Stencils", "Lettering stencil"], clues: ["A sheet with shapes or letters cut out of it.", "You trace inside the gaps.", "Helps you draw letters and shapes neatly."] },
+  { name: "Hall pass", tier: 3, aka: ["Bathroom pass", "Hallway pass", "Toilet pass", "Pass"], clues: ["Often a laminated card or a wooden block with the room number on it.", "Proves you're allowed out of class.", "You carry it to the bathroom during a lesson."] },
+  { name: "Bookmark", tier: 3, aka: ["Book mark", "Bookmarks"], clues: ["Sometimes a ribbon sewn into the spine.", "A thin strip of card, often with a tassel.", "Keeps your place in a book."] },
+  { name: "Pipe cleaners", tier: 3, aka: ["Pipe cleaner", "Chenille stems", "Chenille stem", "Fuzzy sticks"], clues: ["First made for cleaning tobacco pipes.", "Kids twist them into antennae and animals.", "Fuzzy bendable craft wires."] },
+  { name: "Construction paper", tier: 3, aka: ["Sugar paper", "Craft paper", "Colored paper", "Coloured paper"], clues: ["Thick and coarse, and it fades in sunlight.", "Comes in packs of every bright colour.", "Thick sheets you cut and glue to make crafts."] },
+  { name: "Glitter", tier: 3, aka: ["Sparkles"], clues: ["Tiny reflective flakes of plastic or aluminium.", "Every teacher's least favourite craft supply.", "Sparkly stuff that gets everywhere."] },
+  { name: "Magnifying glass", tier: 3, aka: ["Magnifier", "Hand lens", "Loupe", "Magnifying lens"], clues: ["A convex lens on a handle.", "Used on nature walks to look at bugs.", "Makes small things look bigger."] },
+  { name: "Microscope", tier: 3, aka: ["Microscopes", "Light microscope"], clues: ["Has an eyepiece, objective lenses and a stage.", "You slide glass slides under it.", "Lets you see cells."] },
+  { name: "Test tube", tier: 3, aka: ["Testtube", "Test tubes"], clues: ["Round-bottomed and stands in a rack.", "Made of glass for chemistry class.", "A narrow glass vessel for experiments."] },
+  { name: "Bunsen burner", tier: 3, aka: ["Bunsen", "Bunsen burners"], clues: ["Named after a German chemist, with an adjustable air hole.", "Its flame turns blue when the collar is open.", "The gas flame on a science lab bench."] },
+  { name: "Safety goggles", tier: 3, aka: ["Goggles", "Lab goggles", "Safety glasses", "Protective goggles"], clues: ["Indirect vents keep splashes out.", "Worn in the lab and they leave red marks on your face.", "Eye protection for science class."] },
+  { name: "Flash drive", tier: 3, aka: ["USB stick", "USB drive", "Thumb drive", "Memory stick", "Pen drive", "USB", "Flashdrive"], clues: ["Storage measured in gigabytes, small enough for a keychain.", "Plugs into the side of a computer.", "Carries your files between computers."] },
+  { name: "Pencil grip", tier: 3, aka: ["Pencil grips", "Grip", "Grips"], clues: ["A squishy triangular rubber sleeve.", "Helps young kids hold their pencil the right way.", "Slides onto a pencil to make it comfier to hold."] },
+  { name: "Staple remover", tier: 3, aka: ["Staple puller", "Destapler", "Staple removers"], clues: ["Two pairs of interlocking metal jaws.", "Pulls out bent wires.", "Undoes a stapler's work."] },
+  { name: "Rubber band", tier: 3, aka: ["Rubber bands", "Elastic band", "Elastic bands", "Elastic"], clues: ["Made from natural latex and sold by the bag.", "Flick one across the room and you'll get detention.", "A stretchy loop that holds things together."] },
+];
+
+if (typeof module !== "undefined") module.exports = { SUPPLIES };

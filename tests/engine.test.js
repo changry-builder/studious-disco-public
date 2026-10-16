@@ -172,3 +172,52 @@ test("top 3 reveals a city every 5 seconds and scores fewer clues higher", () =>
   assert.equal(Engine.score("top3").total, 1);
   assert.equal(Engine.score("top1", { multiplier: 2 }).total, 10);
 });
+
+const { SUPPLIES } = require("../js/supplies.js");
+const item = (name) => SUPPLIES.find((s) => s.name === name);
+
+test("school supplies are well formed and every tier can fill a match", () => {
+  const names = new Set();
+  for (const it of SUPPLIES) {
+    assert.ok(!names.has(it.name), `duplicate ${it.name}`);
+    names.add(it.name);
+    assert.ok([1, 2, 3].includes(it.tier), `${it.name} tier`);
+    assert.equal(it.clues.length, 3, `${it.name} needs 3 clues`);
+  }
+  for (const tier of [1, 2, 3]) {
+    assert.ok(SUPPLIES.filter((s) => s.tier === tier).length >= Engine.COUNTRIES_PER_ROUND * Engine.ROUND_COUNT, `tier ${tier}`);
+  }
+});
+
+test("no clue contains its own item's name or other names", () => {
+  const words = (t) => ` ${String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  for (const it of SUPPLIES) {
+    for (const n of [it.name, ...it.aka]) {
+      it.clues.forEach((c, k) => assert.ok(!words(c).includes(words(n)), `${it.name}: clue ${k + 1} gives away "${n}"`));
+    }
+  }
+});
+
+test("judges typed school supplies", () => {
+  const j = (name, text) => Engine.judgeItem(SUPPLIES, item(name), text).kind;
+  assert.equal(j("Eraser", "rubber"), "right");
+  assert.equal(j("Pencil", "pencl"), "right");
+  assert.equal(j("Pencil", "pen"), "wrong");
+  assert.equal(j("Sticky notes", "post it"), "right");
+  assert.equal(j("School glue", "glue"), "right");
+  assert.equal(j("Glue stick", "glue"), "right");
+  assert.equal(j("Thumbtack", "drawing pin"), "right");
+  assert.equal(j("Ruler", "spaceship"), "miss");
+});
+
+test("pickItems never repeats an item within a match", () => {
+  const used = new Set();
+  for (let round = 0; round < Engine.ROUND_COUNT; round++) {
+    const qs = Engine.pickItems(SUPPLIES, 1, used);
+    assert.equal(qs.length, Engine.COUNTRIES_PER_ROUND);
+    qs.forEach((q) => {
+      assert.ok(!used.has(q.key));
+      used.add(q.key);
+    });
+  }
+});

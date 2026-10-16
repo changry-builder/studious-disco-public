@@ -255,6 +255,38 @@ function citiesShown(elapsedMs) {
   return Math.min(3, 1 + Math.floor(Math.max(0, elapsedMs) / REVEAL_EVERY_MS));
 }
 
+// ---------- Clue games (School supplies) ----------
+
+// Pick a round of items from one tier, never repeating within a match.
+function pickItems(items, tier, usedKeys = new Set(), rng = Math.random, count = COUNTRIES_PER_ROUND) {
+  return shuffle(
+    items.filter((it) => it.tier === tier && !usedKeys.has(it.name)),
+    rng
+  )
+    .slice(0, count)
+    .map((item) => ({ item, key: item.name, clues: item.clues }));
+}
+
+// Judge a typed item name against every item, so "pen" for a pencil is "wrong", not close enough.
+// Returns { kind: "right" | "wrong" | "miss", item }.
+function judgeItem(items, target, input) {
+  const guess = normalize(input);
+  if (!guess) return { kind: "miss", item: null };
+  let best = null;
+  for (const it of items) {
+    const correct = it === target;
+    for (const name of [it.name, ...(it.aka || [])]) {
+      const spelling = normalize(name);
+      const distance = editDistance(guess, spelling);
+      if (distance > tolerance(spelling.length)) continue;
+      const better = !best || distance < best.distance || (distance === best.distance && correct && !best.correct);
+      if (better) best = { distance, correct, item: it.name };
+    }
+  }
+  if (!best) return { kind: "miss", item: null };
+  return { kind: best.correct ? "right" : "wrong", item: best.item };
+}
+
 function multiplierForRound(roundIndex) {
   return roundIndex === ROUND_COUNT - 1 ? FINAL_ROUND_MULTIPLIER : 1;
 }
@@ -274,6 +306,8 @@ const Engine = {
   pickRound,
   pickReverseRound,
   pickTop3Round,
+  pickItems,
+  judgeItem,
   top3For,
   citiesShown,
   REVEAL_EVERY_MS,
