@@ -3,6 +3,8 @@
 
 const POINTS = { both: 4, capital: 3, largest: 3, major: 1, country: 3, top1: 5, top2: 3, top3: 1, miss: 0, wrong: 0 };
 const REVEAL_EVERY_MS = 5000; // Top 3 game: a new city appears this often
+const SPRINT_MS = 30000; // Picture sprint: each player's turn
+const PASS_PENALTY_MS = 5000; // Picture sprint: passing a picture costs this much clock
 const FAST_BONUS = 1;
 const COUNTRIES_PER_ROUND = 5;
 const ROUND_COUNT = 3;
@@ -287,6 +289,22 @@ function judgeItem(items, target, input) {
   return { kind: best.correct ? "right" : "wrong", item: best.item };
 }
 
+// ---------- Picture sprint ----------
+
+// The order pictures appear in for one round. This tier's unseen pictures come first,
+// then ones already shown in an earlier round, then other tiers, so a fast player never runs out.
+function buildSprintQueue(pool, tier, usedKeys = new Set(), rng = Math.random, keyOf = (p) => p.code || p.name) {
+  const inTier = pool.filter((p) => p.tier === tier);
+  const others = pool.filter((p) => p.tier !== tier);
+  const fresh = (list, seen) => list.filter((p) => usedKeys.has(keyOf(p)) === seen);
+  return [
+    ...shuffle(fresh(inTier, false), rng),
+    ...shuffle(fresh(inTier, true), rng),
+    ...shuffle(fresh(others, false), rng),
+    ...shuffle(fresh(others, true), rng),
+  ];
+}
+
 function multiplierForRound(roundIndex) {
   return roundIndex === ROUND_COUNT - 1 ? FINAL_ROUND_MULTIPLIER : 1;
 }
@@ -307,6 +325,9 @@ const Engine = {
   pickReverseRound,
   pickTop3Round,
   pickItems,
+  buildSprintQueue,
+  SPRINT_MS,
+  PASS_PENALTY_MS,
   judgeItem,
   top3For,
   citiesShown,

@@ -253,5 +253,29 @@ const RevealMap = (function () {
     return { focus };
   }
 
-  return { mount };
+  // A country's outline on its own, for the "Country shapes" picture game.
+  // Keeps the main landmass and nearby islands; drops far-off territories
+  // (Alaska, French Guiana) that would shrink the shape out of recognition.
+  function silhouette(code, size = 260) {
+    const polys = featureFor(code).flatMap((f) =>
+      f.geometry.type === "MultiPolygon" ? f.geometry.coordinates : [f.geometry.coordinates]
+    );
+    if (!polys.length) return "";
+    const asGeo = (c) => ({ type: "Polygon", coordinates: c });
+    const areas = polys.map((c) => d3.geoArea(asGeo(c)));
+    const main = asGeo(polys[areas.indexOf(Math.max(...areas))]);
+    const centre = d3.geoCentroid(main);
+    const kept = polys.filter((c, k) => {
+      const dist = d3.geoDistance(centre, d3.geoCentroid(asGeo(c)));
+      return dist <= 0.3 || (dist <= 0.6 && areas[k] >= 0.02 * Math.max(...areas));
+    });
+    const shape = { type: "MultiPolygon", coordinates: kept };
+    const proj = d3
+      .geoAzimuthalEqualArea()
+      .rotate([-centre[0], -centre[1]])
+      .fitExtent([[14, 14], [size - 14, size - 14]], shape);
+    return `<svg class="silhouette" viewBox="0 0 ${size} ${size}" role="img" aria-label="Country outline"><path d="${d3.geoPath(proj)(shape)}" /></svg>`;
+  }
+
+  return { mount, silhouette };
 })();

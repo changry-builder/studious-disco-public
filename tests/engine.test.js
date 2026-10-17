@@ -221,3 +221,38 @@ test("pickItems never repeats an item within a match", () => {
     });
   }
 });
+
+const { SUPPLY_PICTURES } = require("../js/pictures.js");
+const fs = require("fs");
+const path = require("path");
+
+test("every sprint picture has an image file and a unique name", () => {
+  const names = new Set();
+  for (const p of SUPPLY_PICTURES) {
+    assert.ok(!names.has(p.name), `duplicate ${p.name}`);
+    names.add(p.name);
+    assert.ok([1, 2, 3].includes(p.tier), `${p.name} tier`);
+    assert.ok(fs.existsSync(path.join(__dirname, "..", "img", "supplies", `${p.img}.svg`)), `${p.name} image missing`);
+  }
+});
+
+test("sprint pictures are judged by name or other name", () => {
+  const pic = (n) => SUPPLY_PICTURES.find((p) => p.name === n);
+  const j = (n, text) => Engine.judgeItem(SUPPLY_PICTURES, pic(n), text).kind;
+  assert.equal(j("Thumbtack", "push pin"), "right");
+  assert.equal(j("Soccer ball", "football"), "right");
+  assert.equal(j("American football", "football"), "right");
+  assert.equal(j("Pencil", "pen"), "wrong");
+  assert.equal(j("Notebook", "notepad"), "wrong");
+});
+
+test("sprint queues put the chosen tier first, unseen first, and include every picture", () => {
+  const used = new Set(SUPPLY_PICTURES.filter((p) => p.tier === 1).slice(0, 5).map((p) => p.name));
+  const q = Engine.buildSprintQueue(SUPPLY_PICTURES, 1, used);
+  assert.equal(q.length, SUPPLY_PICTURES.length);
+  const tier1 = SUPPLY_PICTURES.filter((p) => p.tier === 1).length;
+  assert.ok(q.slice(0, tier1).every((p) => p.tier === 1));
+  assert.ok(q.slice(0, tier1 - 5).every((p) => !used.has(p.name)));
+  assert.equal(Engine.SPRINT_MS, 30000);
+  assert.equal(Engine.PASS_PENALTY_MS, 5000);
+});

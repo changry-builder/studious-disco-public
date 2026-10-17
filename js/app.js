@@ -10,13 +10,14 @@
     seconds: 20,
     difficulty: "rising", // "rising" (Easy, Medium, Hard) or a fixed tier: "1", "2", "3"
     topic: "geo", // "geo" (World geography) or "supplies" (School supplies)
-    mode: "cities", // geography game: "cities", "countries" or "top3"
+    mode: "cities", // key into MODES; always a game of the current topic
     rounds: [], // { tier, questions, order: [first, second], turns: [items|null, items|null] }
     roundIndex: 0,
     turnStep: 0, // 0 = first player of the round, 1 = second
   };
 
   let turn = null; // live turn: { player, items, cur, last, timer }
+  let sprint = null; // live picture sprint: { player, left, idx, log, wrong, timer, ... }
 
   // ---------- helpers ----------
 
@@ -37,6 +38,7 @@
   // { country, clue, clueRole, answers }.
   const MODES = {
     cities: {
+      topic: "geo",
       label: "Country → city",
       lede: "You get a country. Name a city. Capitals and the biggest city score the most.",
       ask: "Name a city in",
@@ -65,6 +67,7 @@
       fastBonus: true,
     },
     countries: {
+      topic: "geo",
       label: "City → country",
       lede: "You get a city. Name the country it's in. Some are capitals, some are a country's second or third city.",
       ask: "Which country is this in?",
@@ -96,6 +99,7 @@
       fastBonus: true,
     },
     top3: {
+      topic: "geo",
       label: "Top 3 cities",
       lede: "You get a country's three biggest cities, one at a time, smallest first. Name the country. The fewer cities you need, the more you score.",
       ask: "Which country's three biggest cities?",
@@ -129,7 +133,7 @@
     },
     supplies: {
       topic: "supplies",
-      label: "School supplies",
+      label: "Three clues",
       lede: "You get three clues about a school supply, hardest first, one every 5 seconds. Name it. The fewer clues you need, the more you score.",
       ask: "What's this school supply?",
       placeholder: "Type an item…",
@@ -158,13 +162,43 @@
       tip: "Other names count too: rubber for eraser, Post-it for sticky notes, Sharpie for marker.",
       fastBonus: false,
     },
+    shapes: {
+      topic: "geo",
+      sprint: true,
+      label: "Country shapes",
+      lede: "A speed round in the style of The Floor: name as many countries from their outline as you can in 30 seconds.",
+      noun: "countries",
+      placeholder: "Type a country…",
+      queue: (tier, used) =>
+        E.buildSprintQueue(COUNTRIES, tier, used, Math.random, (c) => c.code).map((country) => ({ key: country.code, country })),
+      picture: (q) => RevealMap.silhouette(q.country.code),
+      name: (q) => E.countryNames(q.country)[0],
+      judge: (q, text) => E.judgeCountry(COUNTRIES, [q.country.code], text).kind === "country",
+      credit: "",
+    },
+    supplyPics: {
+      topic: "supplies",
+      sprint: true,
+      label: "Picture sprint",
+      lede: "A speed round in the style of The Floor: name as many school supplies from their picture as you can in 30 seconds.",
+      noun: "items",
+      placeholder: "Type an item…",
+      queue: (tier, used) =>
+        E.buildSprintQueue(SUPPLY_PICTURES, tier, used, Math.random, (p) => p.name).map((pic) => ({ key: pic.name, pic })),
+      picture: (q) => `<img class="pic-img" src="img/supplies/${q.pic.img}.svg" alt="Picture to name" draggable="false" />`,
+      name: (q) => q.pic.name,
+      judge: (q, text) => E.judgeItem(SUPPLY_PICTURES, q.pic, text).kind === "right",
+      credit: `Pictures: <a href="https://github.com/jdecked/twemoji" target="_blank" rel="noopener">Twemoji</a>, CC BY 4.0.`,
+    },
   };
   const TOPICS = [
     { value: "geo", label: "World geography" },
     { value: "supplies", label: "School supplies" },
   ];
-  const modeFor = (topic, game) => (topic === "supplies" ? MODES.supplies : MODES[game]);
-  const mode = () => modeFor(state.topic, state.mode);
+  const gamesFor = (topic) => Object.entries(MODES).filter(([, m]) => m.topic === topic);
+  const mode = () => MODES[state.mode];
+  // The game last played in each topic, so switching topics brings it back.
+  const lastGame = { geo: "cities", supplies: "supplies" };
 
   const tierForRound = (r) => (state.difficulty === "rising" ? r + 1 : Number(state.difficulty));
   const round = () => state.rounds[state.roundIndex];
@@ -186,6 +220,10 @@
 
   function show(html) {
     stopClock();
+    if (sprint && !sprint.done) {
+      clearInterval(sprint.timer);
+      clearTimeout(sprint.countdown);
+    }
     app.innerHTML = html;
     window.scrollTo(0, 0);
     const focusTarget = app.querySelector("[autofocus]");
@@ -234,20 +272,40 @@
       if (Array.isArray(saved.names) && saved.names.length === 2) state.names = saved.names.map(String);
       if ([15, 20].includes(saved.seconds)) state.seconds = saved.seconds;
       if (DIFFICULTIES.some((d) => d.value === saved.difficulty)) state.difficulty = saved.difficulty;
-      if (MODES[saved.mode] && !MODES[saved.mode].topic) state.mode = saved.mode;
+      if (saved.lastGame) {
+        Object.entries(saved.lastGame).forEach(([t, g]) => {
+          if (MODES[g] && MODES[g].topic === t) lastGame[t] = g;
+        });
+      }
       if (TOPICS.some((t) => t.value === saved.topic)) state.topic = saved.topic;
+      state.mode = lastGame[state.topic];
     }
   } catch (e) {}
 
   function savePrefs() {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ names: state.names, seconds: state.seconds, difficulty: state.difficulty, mode: state.mode, topic: state.topic }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ names: state.names, seconds: state.seconds, difficulty: state.difficulty, topic: state.topic, lastGame }));
     } catch (e) {}
   }
 
   // ---------- setup ----------
 
   function rulesHTML(m) {
+    if (m.sprint) {
+      return `
+          <h2 class="section-title">How it works</h2>
+          <table class="fare"><tbody>
+            <tr><td>Each picture you name</td><td class="num">1</td></tr>
+            <tr><td>Pass a picture</td><td class="num">−${E.PASS_PENALTY_MS / 1000}s</td></tr>
+          </tbody></table>
+          <ul class="fine">
+            <li>${E.SPRINT_MS / 1000} seconds each. Name the picture on screen to get the next one.</li>
+            <li>Stuck? Pass with <kbd>Tab</kbd>. You lose that picture and ${E.PASS_PENALTY_MS / 1000} seconds.</li>
+            <li>Both players get the same pictures in the same order. ${E.ROUND_COUNT} rounds; the last counts double.</li>
+            <li>Spelling slips are forgiven, and other names count.</li>
+            ${m.credit ? `<li>${m.credit}</li>` : ""}
+          </ul>`;
+    }
     return `
           <h2 class="section-title">Scoring</h2>
           <table class="fare"><tbody>${m.rules(E.POINTS)}</tbody></table>
@@ -258,6 +316,16 @@
             <li>One answer per question. Spelling slips and missing accents are forgiven.</li>
             <li>${m.tip}</li>
           </ul>`;
+  }
+
+  function gameOptionsHTML(topic, selected) {
+    const games = gamesFor(topic);
+    return `<div class="segmented ${games.length === 2 ? "two" : "four"}" role="radiogroup">${games
+      .map(
+        ([value, m]) => `
+      <label><input type="radio" name="mode" id="mode-${value}" value="${value}" ${selected === value ? "checked" : ""}/><span>${m.label}</span></label>`
+      )
+      .join("")}</div>`;
   }
 
   function renderSetup() {
@@ -291,20 +359,12 @@
             </div>
           </fieldset>
 
-          <fieldset class="field" id="game-field" ${state.topic === "geo" ? "" : "hidden"}>
+          <fieldset class="field">
             <legend class="label">Game</legend>
-            <div class="segmented three" role="radiogroup">
-              ${Object.entries(MODES)
-                .filter(([, m]) => !m.topic)
-                .map(
-                  ([value, m]) => `
-                <label><input type="radio" name="mode" id="mode-${value}" value="${value}" ${state.mode === value ? "checked" : ""}/><span>${m.label}</span></label>`
-                )
-                .join("")}
-            </div>
+            <div id="game-options">${gameOptionsHTML(state.topic, state.mode)}</div>
           </fieldset>
 
-          <fieldset class="field">
+          <fieldset class="field" id="seconds-field" ${mode().sprint ? "hidden" : ""}>
             <legend class="label">Seconds per question</legend>
             <div class="segmented" role="radiogroup">
               ${[15, 20]
@@ -334,13 +394,22 @@
 
     // Keep the intro and scoring in step with the chosen topic and game.
     const refresh = () => {
-      const topic = app.querySelector('input[name="topic"]:checked').value;
-      const m = modeFor(topic, app.querySelector('input[name="mode"]:checked').value);
-      document.getElementById("game-field").hidden = topic !== "geo";
+      const game = app.querySelector('input[name="mode"]:checked').value;
+      const m = MODES[game];
+      lastGame[m.topic] = game;
+      document.getElementById("seconds-field").hidden = !!m.sprint;
       document.getElementById("mode-lede").textContent = m.lede;
       document.getElementById("rules").innerHTML = rulesHTML(m);
     };
-    app.querySelectorAll('input[name="mode"], input[name="topic"]').forEach((radio) => radio.addEventListener("change", refresh));
+    const bindGames = () => app.querySelectorAll('input[name="mode"]').forEach((radio) => radio.addEventListener("change", refresh));
+    bindGames();
+    app.querySelectorAll('input[name="topic"]').forEach((radio) =>
+      radio.addEventListener("change", () => {
+        document.getElementById("game-options").innerHTML = gameOptionsHTML(radio.value, lastGame[radio.value]);
+        bindGames();
+        refresh();
+      })
+    );
 
     document.getElementById("setup-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -359,9 +428,18 @@
     state.rounds = [];
     for (let r = 0; r < E.ROUND_COUNT; r++) {
       const tier = tierForRound(r);
+      const order = r % 2 === 0 ? [0, 1] : [1, 0];
+      if (mode().sprint) {
+        // Everyone gets the same pictures in the same order. Count the first dozen as
+        // used, so later rounds start with pictures nobody has seen yet.
+        const queue = mode().queue(tier, used);
+        queue.slice(0, 12).forEach((q) => used.add(q.key));
+        state.rounds.push({ tier, queue, questions: [], order, turns: [null, null] });
+        continue;
+      }
       const questions = mode().pick(tier, used);
       questions.forEach((q) => used.add(q.key || q.country.code));
-      state.rounds.push({ tier, questions, order: r % 2 === 0 ? [0, 1] : [1, 0], turns: [null, null] });
+      state.rounds.push({ tier, questions, order, turns: [null, null] });
     }
     state.roundIndex = 0;
     state.turnStep = 0;
@@ -387,10 +465,16 @@
         <p class="lede">Hand the device to ${esc(state.names[player])}. ${esc(state.names[other])}, no peeking.</p>
         <ul class="ticket">
           <li><span class="label">Game</span><span>${mode().label}</span></li>
-          <li><span class="label">Questions</span><span>${E.COUNTRIES_PER_ROUND}</span></li>
+          ${
+            mode().sprint
+              ? `<li><span class="label">Clock</span><span>${E.SPRINT_MS / 1000}s total</span></li>
+          <li><span class="label">Pass</span><span><kbd>Tab</kbd> −${E.PASS_PENALTY_MS / 1000}s</span></li>
+          <li><span class="label">Answer</span><span><kbd>Enter</kbd></span></li>`
+              : `<li><span class="label">Questions</span><span>${E.COUNTRIES_PER_ROUND}</span></li>
           <li><span class="label">Clock</span><span>${state.seconds}s each</span></li>
           <li><span class="label">Skip</span><span><kbd>Tab</kbd></span></li>
-          <li><span class="label">Lock in</span><span><kbd>Enter</kbd></span></li>
+          <li><span class="label">Lock in</span><span><kbd>Enter</kbd></span></li>`
+          }
         </ul>
         <button class="btn primary big" id="go" autofocus>I'm ${esc(state.names[player])}. Start</button>
       </section>`);
@@ -400,6 +484,7 @@
   // ---------- the turn ----------
 
   function startTurn(player) {
+    if (mode().sprint) return startSprint(player);
     const limit = state.seconds * 1000;
     turn = {
       player,
@@ -644,14 +729,243 @@
 
   function finishTurn() {
     stopClock();
-    round().turns[turn.player] = turn.items;
+    const { player, items } = turn;
     turn = null;
+    recordTurn(player, items);
+  }
+
+  // Store a finished turn, then hand over or reveal the round.
+  function recordTurn(player, items) {
+    round().turns[player] = items;
     if (state.turnStep === 0) {
       state.turnStep = 1;
       renderHandoff();
     } else {
       renderReveal();
     }
+  }
+
+  // ---------- picture sprint ----------
+  //
+  // One clock for the whole turn. The picture on screen must be named before the next
+  // appears; passing loses it and costs PASS_PENALTY_MS. The turn's log records every
+  // picture reached: "right", "passed", or "timeout" for the one on screen at the end.
+
+  function startSprint(player) {
+    sprint = { player, left: E.SPRINT_MS, idx: 0, log: [], wrong: "", timer: null, last: 0, done: false };
+    const r = round();
+    const mult = E.multiplierForRound(state.roundIndex);
+    show(`
+      <section class="screen sprint p${player}-theme">
+        <header class="turn-head">
+          <span class="eyebrow">Round ${state.roundIndex + 1} · ${tierName(r.tier)}${mult > 1 ? ` · ×${mult}` : ""}</span>
+          ${playerTag(player)}
+        </header>
+        <div class="sprint-top">
+          <span class="sprint-clock" id="sp-clock">${(E.SPRINT_MS / 1000).toFixed(1)}</span>
+          <span class="sprint-score">Named <b id="sp-score">0</b></span>
+        </div>
+        <div class="clock" aria-hidden="true"><div class="clock-fill fast" id="clock-fill"></div></div>
+        <div class="pic-frame" id="pic"><span class="countdown">3</span></div>
+        <p class="sprint-flash" id="sp-flash" aria-live="polite">&nbsp;</p>
+        <form class="answer" id="sp-form" autocomplete="off">
+          <label class="sr-only" for="sp-answer">Your answer</label>
+          <input id="sp-answer" placeholder="${mode().placeholder}" spellcheck="false" autocapitalize="off" disabled />
+          <div class="answer-actions">
+            <button class="btn ghost" type="button" id="sp-pass" disabled>Pass −${E.PASS_PENALTY_MS / 1000}s</button>
+            <button class="btn primary" type="submit" id="sp-enter" disabled>Enter</button>
+          </div>
+        </form>
+      </section>`);
+
+    const input = document.getElementById("sp-answer");
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Tab" && !e.shiftKey) {
+        e.preventDefault();
+        sprintPass();
+      }
+    });
+    input.addEventListener("animationend", () => input.classList.remove("nope"));
+    document.getElementById("sp-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      sprintAnswer();
+    });
+    document.getElementById("sp-pass").addEventListener("click", sprintPass);
+
+    // 3, 2, 1, then the clock starts.
+    const frame = document.getElementById("pic");
+    let count = 3;
+    const step = () => {
+      if (!sprint || sprint.player !== player) return;
+      count -= 1;
+      if (count > 0) {
+        frame.innerHTML = `<span class="countdown">${count}</span>`;
+        sprint.countdown = setTimeout(step, 600);
+        return;
+      }
+      ["sp-answer", "sp-pass", "sp-enter"].forEach((id) => (document.getElementById(id).disabled = false));
+      input.focus();
+      showSprintPicture();
+      sprint.last = performance.now();
+      sprint.timer = setInterval(sprintTick, 100);
+    };
+    sprint.countdown = setTimeout(step, 600);
+  }
+
+  function showSprintPicture() {
+    const q = round().queue[sprint.idx];
+    if (!q) return endSprint();
+    document.getElementById("pic").innerHTML = mode().picture(q);
+    const input = document.getElementById("sp-answer");
+    input.value = "";
+    input.focus();
+    sprint.wrong = "";
+  }
+
+  function sprintFlash(text, cls) {
+    const el = document.getElementById("sp-flash");
+    el.textContent = text;
+    el.className = `sprint-flash ${cls}`;
+  }
+
+  function renderSprintClock() {
+    const secs = Math.max(0, sprint.left) / 1000;
+    document.getElementById("sp-clock").textContent = secs.toFixed(1);
+    const fill = document.getElementById("clock-fill");
+    fill.style.transform = `scaleX(${Math.max(0, sprint.left) / E.SPRINT_MS})`;
+    fill.classList.toggle("fast", sprint.left > 10000);
+    fill.classList.toggle("low", sprint.left <= 5000);
+  }
+
+  function sprintTick() {
+    const now = performance.now();
+    sprint.left -= now - sprint.last;
+    sprint.last = now;
+    renderSprintClock();
+    if (sprint.left <= 0) endSprint();
+  }
+
+  function sprintAnswer() {
+    if (!sprint || sprint.done) return;
+    const input = document.getElementById("sp-answer");
+    const text = input.value.trim();
+    if (!text) return;
+    const q = round().queue[sprint.idx];
+    if (mode().judge(q, text)) {
+      sprint.log.push({ qIndex: sprint.idx, status: "right", answer: text, points: { total: E.multiplierForRound(state.roundIndex) } });
+      document.getElementById("sp-score").textContent = sprint.log.filter((l) => l.status === "right").length;
+      sprintFlash(`✓ ${mode().name(q)}`, "ok");
+      sprint.idx += 1;
+      showSprintPicture();
+    } else {
+      sprint.wrong = text;
+      sprintFlash("Not it. Try again or pass.", "bad");
+      input.classList.remove("nope");
+      void input.offsetWidth; // restart the shake
+      input.classList.add("nope");
+      input.select();
+    }
+  }
+
+  function sprintPass() {
+    if (!sprint || sprint.done || !sprint.timer) return;
+    const q = round().queue[sprint.idx];
+    sprint.log.push({ qIndex: sprint.idx, status: "passed", answer: sprint.wrong, points: { total: 0 } });
+    sprint.left -= E.PASS_PENALTY_MS;
+    sprintFlash(`Passed: ${mode().name(q)} · −${E.PASS_PENALTY_MS / 1000}s`, "bad");
+    renderSprintClock();
+    if (sprint.left <= 0) return endSprint();
+    sprint.idx += 1;
+    showSprintPicture();
+  }
+
+  function endSprint() {
+    if (!sprint || sprint.done) return;
+    sprint.done = true;
+    clearInterval(sprint.timer);
+    clearTimeout(sprint.countdown);
+    const { player, log, idx } = sprint;
+    const onScreen = document.getElementById("sp-answer");
+    // The picture still showing at the buzzer, if it wasn't just passed.
+    if (round().queue[idx] && !log.some((l) => l.qIndex === idx)) {
+      log.push({ qIndex: idx, status: "timeout", answer: sprint.wrong || (onScreen && onScreen.value.trim()) || "", points: { total: 0 } });
+    }
+    sprint.left = 0;
+    renderSprintClock();
+    sprintFlash("Time!", "bad");
+    ["sp-answer", "sp-pass", "sp-enter"].forEach((id) => (document.getElementById(id).disabled = true));
+    setTimeout(() => {
+      sprint = null;
+      recordTurn(player, log);
+    }, 900);
+  }
+
+  const sprintThumb = (q) => `<span class="thumb">${mode().picture(q)}</span>`;
+
+  function sprintCell(entry, player) {
+    const labels = { right: "Named it", passed: "Passed", timeout: "Time ran out" };
+    if (!entry) {
+      return `<div class="cell none"><span class="cell-who">${playerTag(player)}</span><span class="said none">Didn't reach it</span></div>`;
+    }
+    const said = entry.answer ? `<span class="said">${esc(entry.answer)}</span>` : `<span class="said none">—</span>`;
+    const pts = entry.points.total ? `<span class="pts">+${entry.points.total}</span>` : `<span class="pts zero">0</span>`;
+    const kind = entry.status === "right" ? "country" : "miss";
+    return `<div class="cell ${kind}">
+      <span class="cell-who">${playerTag(player)}</span>
+      <div class="said-line">${said}</div>
+      <div class="verdict"><span class="tag ${kind}">${labels[entry.status]}</span>${pts}</div>
+    </div>`;
+  }
+
+  function renderSprintReveal() {
+    const r = round();
+    const last = state.roundIndex === E.ROUND_COUNT - 1;
+    const reached = Math.max(...[0, 1].map((p) => Math.max(-1, ...r.turns[p].map((l) => l.qIndex))));
+    const named = (p) => r.turns[p].filter((l) => l.status === "right").length;
+    const rows = r.queue
+      .slice(0, reached + 1)
+      .map((q, i) => {
+        const cells = [0, 1].map((p) => sprintCell(r.turns[p].find((l) => l.qIndex === i), p));
+        return `<tr style="--i:${Math.min(i, 4)}">
+          <th scope="row"><div class="sprint-row">${sprintThumb(q)}<span class="cname">${esc(mode().name(q))}</span></div></th>
+          <td>${cells[0]}</td>
+          <td>${cells[1]}</td>
+        </tr>`;
+      })
+      .join("");
+
+    show(`
+      <section class="screen reveal">
+        <header>
+          <p class="eyebrow">Round ${state.roundIndex + 1} of ${E.ROUND_COUNT} · ${tierName(r.tier)} · Arrivals</p>
+          <h1 class="section-title big">The pictures</h1>
+        </header>
+        <div class="scoreline">
+          ${[0, 1]
+            .map(
+              (p) => `<div class="score-card p${p}-theme">
+              ${playerTag(p)}
+              <span class="score-round">Named ${named(p)} · +${roundTotal(r, p)} this round</span>
+              <span class="score-total">${total(p, state.roundIndex)}</span>
+            </div>`
+            )
+            .join("")}
+        </div>
+        <div class="board-wrap">
+          <table class="board answers">
+            <thead><tr><th scope="col">Picture</th><th scope="col">${playerTag(0)}</th><th scope="col">${playerTag(1)}</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <button class="btn primary big" id="next" autofocus>${last ? "Final results" : `On to round ${state.roundIndex + 2}`}</button>
+      </section>`);
+
+    document.getElementById("next").addEventListener("click", () => {
+      if (last) return renderFinal();
+      state.roundIndex++;
+      state.turnStep = 0;
+      renderHandoff();
+    });
   }
 
   // ---------- reveal ----------
@@ -672,6 +986,7 @@
   }
 
   function renderReveal() {
+    if (mode().sprint) return renderSprintReveal();
     const r = round();
     const last = state.roundIndex === E.ROUND_COUNT - 1;
     const rows = r.questions
@@ -753,12 +1068,32 @@
     const margin = winner < 0 ? `Both on ${totals[0]} points.` : `${totals[winner]} to ${totals[1 - winner]}.`;
 
     const study = [];
-    state.rounds.forEach((r) =>
-      r.questions.forEach((q, i) => {
-        const missed = [0, 1].filter((p) => !mode().scored(r.turns[p][i].result.kind));
-        if (missed.length) study.push({ q, missed });
-      })
-    );
+    if (mode().sprint) {
+      // Pictures someone passed or was stuck on at the buzzer.
+      const seen = new Map();
+      state.rounds.forEach((r) =>
+        [0, 1].forEach((p) =>
+          r.turns[p]
+            .filter((l) => l.status !== "right")
+            .forEach((l) => {
+              const q = r.queue[l.qIndex];
+              const entry = seen.get(q.key) || { q, missed: [] };
+              if (!entry.missed.includes(p)) entry.missed.push(p);
+              seen.set(q.key, entry);
+            })
+        )
+      );
+      study.push(...seen.values());
+    } else {
+      state.rounds.forEach((r) =>
+        r.questions.forEach((q, i) => {
+          const missed = [0, 1].filter((p) => !mode().scored(r.turns[p][i].result.kind));
+          if (missed.length) study.push({ q, missed });
+        })
+      );
+    }
+    const studyHead = (q) =>
+      mode().sprint ? `<div class="sprint-row">${sprintThumb(q)}<span class="cname">${esc(mode().name(q))}</span></div>` : mode().rowHead(q);
 
     show(`
       <section class="screen final">
@@ -785,19 +1120,19 @@
           study.length
             ? `<section class="panel">
           <h2 class="section-title">Study list</h2>
-          <p class="fine">${mode().studyNote}</p>
+          <p class="fine">${mode().sprint ? `Pictures someone passed or was stuck on when time ran out.` : mode().studyNote}</p>
           <ul class="study">
             ${study
               .map(
                 ({ q, missed }) => `<li>
-              <div class="study-head">${mode().rowHead(q)}</div>
+              <div class="study-head">${studyHead(q)}</div>
               <span class="missed">${missed.map(playerTag).join(" ")}</span>
             </li>`
               )
               .join("")}
           </ul>
         </section>`
-            : `<p class="lede">${mode().perfect}</p>`
+            : `<p class="lede">${mode().sprint ? "Nobody passed a picture all game." : mode().perfect}</p>`
         }
 
         <div class="actions">
