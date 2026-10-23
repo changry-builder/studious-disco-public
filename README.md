@@ -168,6 +168,11 @@ node scripts/build-geo.js
 The script prints any city it couldn't find; add those to `MANUAL` in the script.
 `npm test` fails if a city is missing coordinates.
 
+## Also in this repo
+
+- `pivot-pitch/`: **Pivot Pitch**, an improv pitching card game. See
+  [`pivot-pitch/README.md`](pivot-pitch/README.md).
+
 ## Credits
 
 - School supplies pictures: [Twemoji](https://github.com/jdecked/twemoji), CC BY 4.0.
