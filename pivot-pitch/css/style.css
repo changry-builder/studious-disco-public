@@ -12,6 +12,8 @@
   --go: #3ccfa5;
   --warn: #ff5d5d;
   --ring-bg: #efe4d4;
+  --card-ink: #2a2140; /* text and outlines on the coloured cards, same in both themes */
+  --go-ink: #10251f;
   --radius: 22px;
   --line: 3px solid var(--ink);
   --pop: 0 6px 0 var(--ink);
@@ -28,7 +30,21 @@
     --pivot: #5b95ff;
     --go: #2fbf96;
     --ring-bg: #3a3256;
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1d1830;
+  --surface: #2a2342;
+  --ink: #f4eefc;
+  --ink-soft: #b5abc9;
+  --adj: #f2b833;
+  --noun: #f27185;
+  --pivot: #5b95ff;
+  --go: #2fbf96;
+  --ring-bg: #3a3256;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -50,7 +66,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wrap {
   max-width: 760px;
   margin: 0 auto;
-  padding: 8px 16px 40px;
+  padding-block: 8px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 
 /* ---------- Top bar ---------- */
@@ -61,7 +79,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   justify-content: space-between;
   max-width: 760px;
   margin: 0 auto;
-  padding: max(12px, env(safe-area-inset-top)) 16px 4px;
+  padding-block: 12px 4px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 
 .logo {
@@ -132,7 +152,7 @@ h2 { font-size: clamp(1.8rem, 6vw, 2.5rem); }
   border: var(--line);
   border-radius: 999px;
   background: var(--go);
-  color: #10251f;
+  color: var(--go-ink);
   font-family: "Fredoka", sans-serif;
   font-weight: 700;
   font-size: 1.4rem;
@@ -188,7 +208,7 @@ h2 { font-size: clamp(1.8rem, 6vw, 2.5rem); }
   background: var(--bg);
   transition: transform 0.1s;
 }
-.pill input:checked + span { background: var(--adj); color: #2a2140; transform: rotate(-2deg); }
+.pill input:checked + span { background: var(--adj); color: var(--card-ink); transform: rotate(-2deg); }
 .pill input:focus-visible + span { outline: 3px dashed var(--pivot); outline-offset: 3px; }
 .pill input:disabled + span { opacity: 0.4; cursor: not-allowed; }
 .pill input:disabled { cursor: not-allowed; }
@@ -221,7 +241,7 @@ h2 { font-size: clamp(1.8rem, 6vw, 2.5rem); }
   border: var(--line);
   border-radius: var(--radius);
   box-shadow: var(--pop);
-  color: #2a2140;
+  color: var(--card-ink);
   padding: 18px 12px;
   width: min(44%, 280px);
   aspect-ratio: 5 / 7;
@@ -335,10 +355,10 @@ h2 { font-size: clamp(1.8rem, 6vw, 2.5rem); }
   font-size: clamp(3rem, 16vw, 6rem);
   color: var(--pivot-ink);
   background: var(--pivot);
-  border: 4px solid #2a2140;
+  border: 4px solid var(--card-ink);
   border-radius: 28px;
   padding: 4px 32px;
-  box-shadow: 0 8px 0 #2a2140;
+  box-shadow: 0 8px 0 var(--card-ink);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.3);
 }
