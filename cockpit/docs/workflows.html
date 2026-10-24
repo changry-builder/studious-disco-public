@@ -180,7 +180,7 @@ footer { border-top: 1px solid var(--line); padding-block: 24px 40px; color: var
 
 <main data-mode="proto">
 <header class="wrap mast">
-  <p class="eyebrow">Plan v0.1 · 24 Oct 2026</p>
+  <p class="eyebrow">Plan v0.2 · 24 Oct 2026</p>
   <h1>Cockpit, step by step</h1>
   <p class="lede">One chat-style app for tasks, habits, contacts and home upkeep. Each workflow below runs in two columns: on the left, what you do and see; on the right, what the software does at the same moment. Use the switch above to see the right-hand column as it is in the local prototype and as it would be once deployed.</p>
   <p class="status">Awaiting sign-off. Nothing is built yet.</p>
@@ -310,7 +310,7 @@ footer { border-top: 1px solid var(--line); padding-block: 24px 40px; color: var
           <div class="result"><b>Action item added</b><span>Call plumber · due Fri 30 Oct</span><div class="btns"><span class="btn">Undo</span><span class="btn">Edit</span></div></div>
         </div>
         <div class="r"><span class="cell-label">Underneath</span>
-          <p><span class="tag">Agent router</span>One request to the Claude API with today's date and weekday, your time zone, and the tool list gathered from every module.</p>
+          <p><span class="tag">Agent router</span>Simple lines like "done plumber" are matched by rules with no model call. Anything else makes one request to a small Claude model with today's date and weekday, your time zone, and a compact tool list gathered from every module. The list sits first so prompt caching can reuse it, and token counts are logged.</p>
           <pre class="snip">tool: actions.add_item
 args: { "title": "Call plumber",
         "due": "2026-10-30" }</pre>
@@ -489,7 +489,8 @@ args: { name, how_met, employer,
           <p>A short, readable paragraph, not a data dump.</p>
         </div>
         <div class="r"><span class="cell-label">Underneath</span>
-          <p><span class="tag">LLM</span>The structured list (not the raw database) goes to the model with the instruction to write 4 to 6 plain lines. If the call fails, a fixed template renders the same list.</p>
+          <p><span class="tag">Template</span>By default a fixed template renders the list, with no model call and no tokens used.</p>
+          <p><span class="tag">LLM</span>Optional, switched on in settings: the structured list (not the raw database) goes to the model to write 4 to 6 plain lines. If the call fails, the template is used.</p>
           <p>The result is stored in <code>brief(date, text, data_json)</code>, so reopening is instant and free.</p>
         </div>
       </div>

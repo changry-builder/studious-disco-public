@@ -1,11 +1,15 @@
 # Cockpit: plan for sign-off
 
-Status: **proposal, awaiting your approval. No application code exists yet.**
-Version 0.1, 24 Oct 2026. The visual companion is `workflows.html` in this folder.
+Status: **proposal, awaiting your explicit approval. No application code exists yet.**
+Version 0.2, 24 Oct 2026. The visual companion is `workflows.html` in this folder.
 
-## 1. Questions that would change the plan
+## 1. Decisions so far
 
-Each has a default. If you don't answer, the plan proceeds with the default.
+Your answers: fresh repo; API calls and `.env` are fine, with token use kept low (see 6a); Python and Node are installed; Galaxy S24 Ultra, Samsung Health sync unchecked until phase 3; personal Gmail; morning brief at 07:30 by phone notification; unencrypted SQLite is fine, no import; local writes save at once with Undo.
+
+Still open: the name and visibility of the fresh repo. I suggest a private repo called `cockpit`. This session can only reach this repo, so once you approve I will create the new one and ask you to attach it before I commit there.
+
+The original questions and defaults are kept below for reference.
 
 | # | Question | Default I will use | Why it matters |
 |---|----------|--------------------|----------------|
@@ -179,6 +183,18 @@ All ids are UUIDs, so rows can be merged across devices later. Every table has `
 Speed target for the 5-second goal: the input accepts the next line immediately; the result card appears when the model answers (aim for 1 to 3 seconds with a small, fast model).
 
 Tests: each module has a table of example phrases and the tool call it should produce, run against the fake model for speed and against the real model on demand.
+
+## 6a. Keeping token use low
+
+Rules the agent code must follow, each covered by a test:
+
+1. **Rules before the model.** Obvious lines such as `done plumber` or a habit name from your list are handled by a small pattern matcher with no model call. The model is the fallback, not the default.
+2. **Smallest model that works.** Routing uses a Haiku-class model. A larger model is a setting you can try, never the default.
+3. **Short, stable prompts.** The tool list is compact (name, one-line description, argument schema) and sits at the start of the request so prompt caching can reuse it. Only the date and your line change per call.
+4. **One call per message.** The 3-call loop is a ceiling for rare cases like contact lookups, not the normal path. Lookups run in code first and only ambiguous cases go back to the model.
+5. **The morning brief uses a template by default.** The model writes a friendlier version only if you switch it on. Email triage (phase 2) batches threads into one call and only sends sender, subject and snippet.
+6. **Visible budget.** Every call logs input and output tokens to `message_log`. A "Usage" line in settings shows today and this month, and a daily cap in `.env` stops model calls (rules and fallback save still work) when reached.
+7. **Free tests.** Normal tests use the fake model. Tests against the real model run only on request, with a fixed list of phrases.
 
 ## 7. Safety rules, written into code
 
