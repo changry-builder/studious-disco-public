@@ -87,7 +87,7 @@
     el.prompt.textContent = quiz.prompt;
     el.best.textContent = bestText(loadBest());
     el.results.hidden = true;
-    document.body.classList.remove("over");
+    document.body.classList.remove("over", "playing");
     firstOpenRow = 0;
     el.scroller.scrollTop = 0;
     say("");
@@ -95,6 +95,7 @@
 
   function start() {
     state = "playing";
+    document.body.classList.add("playing");
     endsAt = Date.now() + quiz.seconds * 1000;
     el.intro.hidden = true;
     el.guess.disabled = false;
@@ -128,6 +129,7 @@
     el.guess.placeholder = "";
     el.action.textContent = "Play again";
     el.action.classList.add("primary");
+    document.body.classList.remove("playing");
     document.body.classList.add("over");
     say("");
 

@@ -114,6 +114,10 @@ body {
 
 /* ---- content ---- */
 .wrap { max-width: 760px; margin: 0 auto; padding: 10px 16px 16px; }
+/* While playing, leave room below the board so its last rows can scroll up above the
+   on-screen keyboard. Inside an embedded frame the page can't tell how tall the
+   keyboard is, so this is generous rather than measured. */
+.playing .wrap { padding-bottom: max(60vh, 280px); }
 .intro { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
 .intro h2 { margin: 0 0 6px; font-size: 1.25rem; }
 .intro p { margin: 6px 0; color: var(--muted); }
