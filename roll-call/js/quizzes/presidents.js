@@ -5,22 +5,24 @@
 // Grover Cleveland and Donald Trump each served two non-consecutive terms.
 //
 // Each person accepts their surname, first name + surname and full name, plus any
-// extras listed. Where a surname is shared (Adams, Harrison, Johnson, Roosevelt,
-// Bush), the surname alone asks "which one?" until only one of them is left.
+// extras listed. A shared surname (Adams, Harrison, Johnson, Roosevelt, Bush) fills
+// in everyone who has it; a first name or initials picks just one.
+//
+// `short` is what the board shows: the surname, with initials where it's shared.
 
 (function (root) {
-  // [id, full name, surname, extra accepted spellings]
+  // [id, full name, surname, extra accepted spellings, board label if not the surname]
   const PEOPLE = [
     ["washington", "George Washington", "Washington"],
-    ["jadams", "John Adams", "Adams"],
+    ["jadams", "John Adams", "Adams", [], "J. Adams"],
     ["jefferson", "Thomas Jefferson", "Jefferson"],
     ["madison", "James Madison", "Madison"],
     ["monroe", "James Monroe", "Monroe"],
     // "Quincy Adams" as the surname so "John Adams" only means #2.
-    ["jqadams", "John Quincy Adams", "Quincy Adams", ["Adams", "JQA"]],
+    ["jqadams", "John Quincy Adams", "Quincy Adams", ["Adams", "JQA"], "J. Q. Adams"],
     ["jackson", "Andrew Jackson", "Jackson"],
     ["vanburen", "Martin Van Buren", "Van Buren"],
-    ["whharrison", "William Henry Harrison", "Harrison", ["William Harrison", "WH Harrison"]],
+    ["whharrison", "William Henry Harrison", "Harrison", ["William Harrison", "WH Harrison"], "W. H. Harrison"],
     ["tyler", "John Tyler", "Tyler"],
     ["polk", "James K. Polk", "Polk"],
     ["taylor", "Zachary Taylor", "Taylor"],
@@ -28,32 +30,32 @@
     ["pierce", "Franklin Pierce", "Pierce"],
     ["buchanan", "James Buchanan", "Buchanan"],
     ["lincoln", "Abraham Lincoln", "Lincoln", ["Abe Lincoln"]],
-    ["ajohnson", "Andrew Johnson", "Johnson"],
+    ["ajohnson", "Andrew Johnson", "Johnson", [], "A. Johnson"],
     ["grant", "Ulysses S. Grant", "Grant"],
     ["hayes", "Rutherford B. Hayes", "Hayes"],
     ["garfield", "James A. Garfield", "Garfield"],
     ["arthur", "Chester A. Arthur", "Arthur"],
     ["cleveland", "Grover Cleveland", "Cleveland"],
-    ["bharrison", "Benjamin Harrison", "Harrison", ["Ben Harrison"]],
+    ["bharrison", "Benjamin Harrison", "Harrison", ["Ben Harrison"], "B. Harrison"],
     ["mckinley", "William McKinley", "McKinley"],
-    ["troosevelt", "Theodore Roosevelt", "Roosevelt", ["Teddy Roosevelt", "Teddy"]],
+    ["troosevelt", "Theodore Roosevelt", "Roosevelt", ["Teddy Roosevelt", "Teddy"], "T. Roosevelt"],
     ["taft", "William Howard Taft", "Taft"],
     ["wilson", "Woodrow Wilson", "Wilson"],
     ["harding", "Warren G. Harding", "Harding"],
     ["coolidge", "Calvin Coolidge", "Coolidge"],
     ["hoover", "Herbert Hoover", "Hoover"],
-    ["froosevelt", "Franklin D. Roosevelt", "Roosevelt", ["FDR", "Franklin Delano Roosevelt"]],
+    ["froosevelt", "Franklin D. Roosevelt", "Roosevelt", ["FDR", "Franklin Delano Roosevelt"], "F. D. Roosevelt"],
     ["truman", "Harry S. Truman", "Truman"],
     ["eisenhower", "Dwight D. Eisenhower", "Eisenhower", ["Ike"]],
     ["kennedy", "John F. Kennedy", "Kennedy", ["JFK", "John Fitzgerald Kennedy"]],
-    ["ljohnson", "Lyndon B. Johnson", "Johnson", ["LBJ", "Lyndon Baines Johnson"]],
+    ["ljohnson", "Lyndon B. Johnson", "Johnson", ["LBJ", "Lyndon Baines Johnson"], "L. B. Johnson"],
     ["nixon", "Richard Nixon", "Nixon", ["Richard M. Nixon", "Dick Nixon"]],
     ["ford", "Gerald Ford", "Ford", ["Gerald R. Ford"]],
     ["carter", "Jimmy Carter", "Carter", ["James Carter", "James Earl Carter"]],
     ["reagan", "Ronald Reagan", "Reagan", ["Ronald W. Reagan"]],
-    ["ghwbush", "George H. W. Bush", "Bush", ["H. W. Bush", "George Bush Sr", "Bush Sr", "Bush 41", "GHWB"]],
+    ["ghwbush", "George H. W. Bush", "Bush", ["H. W. Bush", "George Bush Sr", "Bush Sr", "Bush 41", "GHWB"], "G. H. W. Bush"],
     ["clinton", "Bill Clinton", "Clinton", ["William Clinton", "William Jefferson Clinton"]],
-    ["gwbush", "George W. Bush", "Bush", ["W. Bush", "George Bush Jr", "Bush Jr", "Bush 43", "Dubya", "GWB"]],
+    ["gwbush", "George W. Bush", "Bush", ["W. Bush", "George Bush Jr", "Bush Jr", "Bush 43", "Dubya", "GWB"], "G. W. Bush"],
     ["obama", "Barack Obama", "Obama", ["Barack Hussein Obama"]],
     ["trump", "Donald Trump", "Trump", ["Donald J. Trump"]],
     ["biden", "Joe Biden", "Biden", ["Joseph Biden", "Joseph R. Biden"]],
@@ -80,9 +82,9 @@
   ];
 
   const answers = {};
-  for (const [id, name, surname, extra = []] of PEOPLE) {
+  for (const [id, name, surname, extra = [], short = surname] of PEOPLE) {
     const first = name.split(" ")[0];
-    answers[id] = { name, accept: [surname, `${first} ${surname}`, name, ...extra] };
+    answers[id] = { name, short, accept: [surname, `${first} ${surname}`, name, ...extra] };
   }
 
   const PRESIDENTS = {

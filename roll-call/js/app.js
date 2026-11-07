@@ -6,7 +6,7 @@
   const el = {
     score: $("score"), clock: $("clock"), entry: $("entry"), guess: $("guess"),
     action: $("action"), feedback: $("feedback"), intro: $("intro"), prompt: $("prompt"),
-    best: $("best"), board: $("board"), results: $("results"),
+    best: $("best"), board: $("board"), scroller: $("scroller"), results: $("results"),
     resultsTitle: $("results-title"), resultsScore: $("results-score"),
     resultsDetail: $("results-detail"), resultsBest: $("results-best"),
     review: $("review"), again: $("again"),
@@ -17,6 +17,7 @@
   let endsAt = 0;
   let timer = 0;
   let feedbackTimer = 0;
+  let firstOpenRow = 0; // the board scrolls here as rows ahead of it fill up
 
   // ---- best score (per viewer; fine if storage is unavailable) ----
   const bestKey = `rollcall:best:${quiz.id}`;
@@ -52,7 +53,8 @@
 
   function fill(id, cls) {
     for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) {
-      li.querySelector(".name").textContent = quiz.answers[id].name;
+      li.querySelector(".name").textContent = quiz.answers[id].short || quiz.answers[id].name;
+      li.title = quiz.answers[id].name;
       li.classList.add(cls);
     }
   }
@@ -86,6 +88,8 @@
     el.best.textContent = bestText(loadBest());
     el.results.hidden = true;
     document.body.classList.remove("over");
+    firstOpenRow = 0;
+    el.scroller.scrollTop = 0;
     say("");
   }
 
@@ -145,16 +149,14 @@
     const result = game.guess(el.guess.value, { fuzzy });
     if (!result) return;
     if (result.type === "found") {
-      const { name } = quiz.answers[result.id];
-      fill(result.id, "found");
-      flash(result.id);
-      const nums = quiz.slots.filter((s) => s.answer === result.id).map((s) => s.label).join(" & ");
-      say(`✓ ${name} (${nums})`, "good");
+      result.ids.forEach((id) => { fill(id, "found"); flash(id); });
+      const nums = quiz.slots.filter((s) => result.ids.includes(s.answer)).map((s) => s.label).join(", ");
+      const names = result.ids.map((id) => quiz.answers[id].name).join(" & ");
+      say(`✓ ${names} (${nums})`, "good");
       el.guess.value = "";
       updateScore();
       if (game.isComplete()) finish("done");
-    } else if (result.type === "ambiguous") {
-      say(`More than one matches “${el.guess.value.trim()}”. Add a first name.`, "hint");
+      else followProgress();
     } else if (result.type === "repeat") {
       say("Already named", "hint");
       if (fuzzy) el.guess.value = "";
@@ -165,6 +167,33 @@
       el.guess.classList.add("shake");
     }
   }
+
+  // Once every box above a row is filled, bring that row to the top of the board.
+  function followProgress() {
+    const first = quiz.slots.findIndex((slot) => !game.isFound(slot.answer));
+    if (first < 0) return;
+    const columns = getComputedStyle(el.board).gridTemplateColumns.split(" ").length;
+    const row = Math.floor(first / columns);
+    if (row <= firstOpenRow) return;
+    firstOpenRow = row;
+    const target = el.board.children[first];
+    const top = target.offsetTop - el.board.offsetTop;
+    el.scroller.scrollTo({ top, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+
+  // Keep the app the height of what's visible, so the board ends above the
+  // on-screen keyboard and the top bar never scrolls away.
+  function fitViewport() {
+    const vv = window.visualViewport;
+    document.documentElement.style.setProperty("--app-height", `${vv ? vv.height : window.innerHeight}px`);
+    if (window.scrollY) window.scrollTo(0, 0);
+  }
+  if (window.visualViewport) {
+    visualViewport.addEventListener("resize", fitViewport);
+    visualViewport.addEventListener("scroll", fitViewport);
+  }
+  window.addEventListener("resize", fitViewport);
+  fitViewport();
 
   function flash(id) {
     for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) {

@@ -72,23 +72,20 @@
 
     // Check what the player has typed.
     //   fuzzy: false while typing (exact matches only), true on Enter (typos forgiven).
+    // A name shared by several answers (a surname like "Bush") names all of them.
     // Returns null when there's nothing to report, or one of:
-    //   { type: "found", id }        newly named; it's now marked found
-    //   { type: "repeat", ids }      matches only answers already named
-    //   { type: "ambiguous", ids }   matches several unnamed answers
-    //   { type: "miss" }             no match (fuzzy only)
+    //   { type: "found", ids }   newly named; they're now marked found
+    //   { type: "repeat", ids }  matches only answers already named
+    //   { type: "miss" }         no match (fuzzy only)
     function guess(text, { fuzzy = false } = {}) {
       const key = normalize(text);
       if (!key) return null;
       const ids = lookup(key, fuzzy);
       if (!ids) return fuzzy ? { type: "miss" } : null;
       const open = ids.filter((id) => !found.has(id));
-      if (open.length === 1) {
-        found.add(open[0]);
-        return { type: "found", id: open[0] };
-      }
       if (open.length === 0) return { type: "repeat", ids };
-      return { type: "ambiguous", ids: open };
+      open.forEach((id) => found.add(id));
+      return { type: "found", ids: open };
     }
 
     return {

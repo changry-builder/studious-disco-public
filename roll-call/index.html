@@ -25,15 +25,16 @@
   <p class="feedback" id="feedback" aria-live="polite"></p>
 </header>
 
-<main class="wrap">
+<main class="scroller" id="scroller">
+<div class="wrap">
   <section class="intro" id="intro">
     <h2 id="prompt">Name every US president</h2>
     <p>Type a name and it fills in as soon as it's right. No need to press Enter.
-      Surnames are enough, but shared ones (Adams, Harrison, Johnson, Roosevelt, Bush)
-      need a first name or initials. Press Enter to try a misspelled name.</p>
+      Surnames are enough: “Bush” fills in both Bushes. Press Enter to try a misspelled name.</p>
     <p class="best" id="best"></p>
   </section>
   <ol class="board" id="board"></ol>
+</div>
 </main>
 
 <div class="sheet" id="results" hidden>

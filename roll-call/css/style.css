@@ -39,23 +39,34 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* App shell: the top bar stays put and only the board scrolls. */
+  display: flex;
+  flex-direction: column;
+  height: var(--app-height, 100dvh);
+}
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding-bottom: env(safe-area-inset-bottom);
 }
 [hidden] { display: none !important; }
 
 /* ---- sticky top bar: title, score, clock, input ---- */
 .bar {
-  position: sticky;
-  top: 0;
+  flex: none;
   z-index: 10;
   background: var(--brand);
   color: var(--brand-ink);
-  padding: calc(10px + env(safe-area-inset-top)) 16px 8px;
+  padding: calc(8px + env(safe-area-inset-top)) 16px 6px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
 }
 .bar-top, .entry, .feedback { max-width: 760px; margin: 0 auto; }
@@ -65,13 +76,13 @@ body {
 .stats { display: flex; gap: 14px; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; }
 .clock.low { color: #ffb4ab; animation: pulse 1s ease-in-out infinite; }
 
-.entry { display: flex; gap: 8px; margin-top: 8px; }
+.entry { display: flex; gap: 8px; margin-top: 6px; }
 .entry input {
   flex: 1;
   min-width: 0;
   font: inherit;
   font-size: 17px; /* 16px+ stops iOS zooming in on focus */
-  padding: 11px 12px;
+  padding: 9px 12px;
   border-radius: var(--radius);
   border: 2px solid transparent;
   background: var(--surface);
@@ -96,13 +107,13 @@ body {
 .btn.primary { background: #f2c14e; border-color: #f2c14e; color: #1b2233; }
 .btn:active { transform: translateY(1px); }
 
-.feedback { min-height: 1.45em; margin-top: 6px; margin-bottom: 0; font-size: 0.92rem; color: rgb(255 255 255 / 0.85); }
+.feedback { min-height: 1.45em; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0; font-size: 0.92rem; color: rgb(255 255 255 / 0.85); }
 .feedback.good { color: #9ff0c4; }
 .feedback.bad { color: #ffb4ab; }
 .feedback.hint { color: #ffe08a; }
 
 /* ---- content ---- */
-.wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 10px 16px 16px; }
 .intro { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
 .intro h2 { margin: 0 0 6px; font-size: 1.25rem; }
 .intro p { margin: 6px 0; color: var(--muted); }
@@ -114,28 +125,29 @@ body {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
 }
-@media (min-width: 620px) { .board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 520px) { .board { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 700px) { .board { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 
 .slot {
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-areas: "num name" "num sub";
-  column-gap: 8px;
-  align-items: center;
+  grid-template-areas: "name name" "num sub";
+  column-gap: 4px;
   align-content: center;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px 8px;
-  min-height: 48px;
+  border-radius: 6px;
+  padding: 3px 6px;
+  min-height: 38px;
+  scroll-margin-top: 4px;
 }
-.slot .num { grid-area: num; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2.4em; font-size: 0.9rem; }
-.slot .name { grid-area: name; font-weight: 600; font-size: 0.95rem; line-height: 1.2; overflow-wrap: anywhere; }
-.slot .name:empty::before { content: ""; display: block; height: 0.9em; border-bottom: 2px dotted var(--line); width: 80%; }
-.slot .sub { grid-area: sub; font-size: 0.75rem; color: var(--muted); }
+.slot .num { grid-area: num; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.65rem; line-height: 1.2; }
+.slot .name { grid-area: name; font-weight: 600; font-size: 0.8rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
+.slot .name:empty::before { content: ""; display: block; height: 0.85em; width: 85%; border-bottom: 2px dotted var(--line); }
+.slot .sub { grid-area: sub; font-size: 0.65rem; line-height: 1.2; color: var(--muted); font-variant-numeric: tabular-nums; }
 .slot.found { background: var(--good-bg); border-color: transparent; }
 .slot.found .num { color: var(--good); }
 .slot.missed { background: var(--bad-bg); border-color: transparent; }

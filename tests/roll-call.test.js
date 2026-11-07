@@ -16,60 +16,59 @@ test("presidents data is complete", () => {
   assert.deepEqual(twice.map((s) => s.label), ["#22", "#24", "#45", "#47"]);
 });
 
-test("no name that fills in on its own is the start of a different person's name", () => {
+test("no name fills in partway through typing someone else's name", () => {
   // Answers fill in as you type, so "Grant" must not be the first letters of
   // someone else's name or that person could never be typed.
   const index = RollCall.buildIndex(PRESIDENTS);
   for (const [key, owners] of index) {
-    if (owners.size !== 1) continue;
-    const [owner] = owners;
     for (const [other, otherOwners] of index) {
       if (other !== key && other.startsWith(key)) {
-        assert.ok(otherOwners.has(owner) && otherOwners.size === 1,
-          `"${key}" fills in before "${other}" can be typed`);
+        for (const id of otherOwners) {
+          assert.ok(owners.has(id), `"${key}" fills in before "${other}" can be typed`);
+        }
       }
     }
   }
 });
 
+test("every answer has a board label", () => {
+  for (const [id, a] of Object.entries(PRESIDENTS.answers)) assert.ok(a.short, id);
+});
+
 test("surnames, full names and nicknames all count", () => {
   const game = RollCall.createGame(PRESIDENTS);
-  assert.deepEqual(game.guess("Lincoln"), { type: "found", id: "lincoln" });
-  assert.equal(game.guess("van buren").id, "vanburen");
-  assert.equal(game.guess("FDR").id, "froosevelt");
-  assert.equal(game.guess("Ike").id, "eisenhower");
-  assert.equal(game.guess("John F. Kennedy").id, "kennedy");
-  assert.equal(game.guess("Dubya").id, "gwbush");
+  assert.deepEqual(game.guess("Lincoln"), { type: "found", ids: ["lincoln"] });
+  assert.deepEqual(game.guess("van buren").ids, ["vanburen"]);
+  assert.deepEqual(game.guess("FDR").ids, ["froosevelt"]);
+  assert.deepEqual(game.guess("Ike").ids, ["eisenhower"]);
+  assert.deepEqual(game.guess("John F. Kennedy").ids, ["kennedy"]);
+  assert.deepEqual(game.guess("Dubya").ids, ["gwbush"]);
   assert.equal(game.found.size, 6);
 });
 
-test("shared surnames ask which one, until only one is left", () => {
+test("a shared surname fills in everyone who has it", () => {
   const game = RollCall.createGame(PRESIDENTS);
-  assert.equal(game.guess("Adams").type, "ambiguous");
-  assert.equal(game.guess("John Quincy Adams").id, "jqadams");
-  assert.equal(game.guess("adams").id, "jadams");
+  assert.deepEqual(game.guess("Bush").ids.sort(), ["ghwbush", "gwbush"]);
+  assert.equal(game.guess("Bush Jr").type, "repeat");
+  assert.deepEqual(game.guess("John Adams").ids, ["jadams"], "a first name picks one");
+  assert.deepEqual(game.guess("Adams").ids, ["jqadams"], "then the surname fills the rest");
   assert.equal(game.guess("Adams").type, "repeat");
-
-  assert.equal(game.guess("Bush").type, "ambiguous");
-  assert.equal(game.guess("George Bush").type, "ambiguous");
-  assert.equal(game.guess("HW Bush").id, "ghwbush");
-  assert.equal(game.guess("Johnson").type, "ambiguous");
-  assert.equal(game.guess("LBJ").id, "ljohnson");
+  assert.deepEqual(game.guess("Johnson").ids.sort(), ["ajohnson", "ljohnson"]);
 });
 
 test("one answer covers both of Cleveland's and Trump's terms", () => {
   const game = RollCall.createGame(PRESIDENTS);
-  assert.equal(game.guess("Cleveland").id, "cleveland");
+  assert.deepEqual(game.guess("Cleveland").ids, ["cleveland"]);
   assert.equal(game.guess("Grover Cleveland").type, "repeat");
-  assert.equal(game.guess("trump").id, "trump");
+  assert.deepEqual(game.guess("trump").ids, ["trump"]);
 });
 
 test("typos are only forgiven on Enter", () => {
   const game = RollCall.createGame(PRESIDENTS);
   assert.equal(game.guess("Eisenhauer"), null);
-  assert.equal(game.guess("Eisenhauer", { fuzzy: true }).id, "eisenhower");
-  assert.equal(game.guess("Jeffersen", { fuzzy: true }).id, "jefferson");
-  assert.equal(game.guess("Harison", { fuzzy: true }).type, "ambiguous");
+  assert.deepEqual(game.guess("Eisenhauer", { fuzzy: true }).ids, ["eisenhower"]);
+  assert.deepEqual(game.guess("Jeffersen", { fuzzy: true }).ids, ["jefferson"]);
+  assert.equal(game.guess("Harison", { fuzzy: true }).ids.length, 2);
   assert.equal(game.guess("Smith", { fuzzy: true }).type, "miss");
   assert.equal(game.guess("Polc", { fuzzy: true }).type, "miss", "short names need to be exact");
   assert.equal(game.guess("   "), null);

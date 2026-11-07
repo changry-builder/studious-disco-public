@@ -27,9 +27,10 @@ Open `roll-call/index.html` to play. The first quiz is **US Presidents**: 45 peo
 over 47 presidencies, in 10 minutes.
 
 - Names fill in as you type; there's no need to press `Enter`.
-- A surname is enough. For a shared surname (Adams, Harrison, Johnson, Roosevelt,
-  Bush), add a first name or initials (`John Quincy Adams`, `HW Bush`, `LBJ`). Once
-  only one of them is left, the surname alone fills it in.
+- A surname is enough. A shared surname fills in everyone who has it: "Bush" fills
+  both Bushes. Add a first name or initials to pick one (`John Quincy Adams`, `LBJ`).
+- The board is a compact grid. Only the board scrolls, so the typing box stays at the top,
+  and once every box above a row is filled, the board scrolls that row to the top.
 - Cleveland and Trump fill both of their terms at once.
 - Misspelled? Press `Enter` and small typos are forgiven ("Eisenhauer").
 - **Give up** shows what you missed in red. Your best score is saved on the device.
