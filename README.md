@@ -20,6 +20,25 @@ Open `index.html` in a browser to play. There's nothing to install or build.
   item; the fewer clues you need, the more you score.
 - **Picture sprint**: a picture sprint with pictures of school supplies.
 
+## Roll Call (single player)
+
+`roll-call/` is a separate game: name everything on a list before the clock runs out.
+Open `roll-call/index.html` to play. The first quiz is **US Presidents**: 45 people
+over 47 presidencies, in 10 minutes.
+
+- Names fill in as you type; there's no need to press `Enter`.
+- A surname is enough. For a shared surname (Adams, Harrison, Johnson, Roosevelt,
+  Bush), add a first name or initials (`John Quincy Adams`, `HW Bush`, `LBJ`). Once
+  only one of them is left, the surname alone fills it in.
+- Cleveland and Trump fill both of their terms at once.
+- Misspelled? Press `Enter` and small typos are forgiven ("Eisenhauer").
+- **Give up** shows what you missed in red. Your best score is saved on the device.
+
+To add a quiz, copy `roll-call/js/quizzes/presidents.js`: list the `answers` (with the
+spellings that count) and the board's `slots`, then add a `<script>` tag for it in
+`roll-call/index.html`. `npm test` checks that no answer fills in partway through
+typing someone else's name.
+
 ## Picture sprint
 
 A speed round in the style of the TV show *The Floor*:
@@ -141,6 +160,7 @@ Missing accents, capital letters, and small typos are forgiven in both games
 - `js/vendor/`: d3-geo and d3-array (ISC licence), used to draw the map
 - `js/app.js`: screens, the two game modes, and the per-question clock
 - `tests/engine.test.js`: tests for the engine and data
+- `roll-call/`: the Roll Call game (`js/engine.js` matching and game state, `js/app.js` screens, `js/quizzes/` lists); tests in `tests/roll-call.test.js`
 
 Run the tests with `npm test` (Node 18+).
 
