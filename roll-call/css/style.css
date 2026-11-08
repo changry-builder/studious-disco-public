@@ -123,6 +123,22 @@ body {
 .intro { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
 .intro h2 { margin: 0 0 6px; font-size: 1.25rem; }
 .intro p { margin: 6px 0; color: var(--muted); }
+.timepick { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; font-weight: 600; }
+.stepper { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg); }
+.stepper button {
+  font: inherit; font-size: 1.2rem; width: 44px; border: 0; background: transparent; color: var(--ink);
+  cursor: pointer; touch-action: manipulation;
+}
+.stepper button, .hint-toggle, .btn { -webkit-tap-highlight-color: transparent; }
+.stepper button:active:not(:disabled) { background: var(--line); }
+.stepper button:disabled { opacity: 0.3; cursor: default; }
+.stepper input {
+  width: 3.2em; text-align: center; font: inherit; font-size: 17px; font-variant-numeric: tabular-nums;
+  border: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); padding: 8px 0; -moz-appearance: textfield;
+}
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.timepick > span { color: var(--muted); font-weight: 500; }
 .best { font-weight: 600; color: var(--ink) !important; }
 .best:empty { display: none; }
 

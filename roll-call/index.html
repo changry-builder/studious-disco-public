@@ -34,6 +34,15 @@
       Surnames are enough: “Bush” fills in both Bushes. Press Enter to try a misspelled name.</p>
     <p>Stuck? Tap a box to see that president's initials, or turn on <strong>Hints</strong>
       at the top to see them all. At the end you'll see which ones you needed a hint for.</p>
+    <div class="timepick">
+      <label for="minutes">Time limit</label>
+      <div class="stepper">
+        <button type="button" id="less" aria-label="Less time">−</button>
+        <input id="minutes" type="number" inputmode="numeric" min="1" max="60" step="1" value="10" />
+        <button type="button" id="more" aria-label="More time">+</button>
+      </div>
+      <span>min</span>
+    </div>
     <p class="best" id="best"></p>
   </section>
   <ol class="board" id="board"></ol>

@@ -10,6 +10,7 @@
     resultsTitle: $("results-title"), resultsScore: $("results-score"),
     resultsDetail: $("results-detail"), resultsBest: $("results-best"),
     review: $("review"), again: $("again"), hints: $("hints"),
+    minutes: $("minutes"), less: $("less"), more: $("more"),
   };
 
   let game = null;
@@ -19,9 +20,20 @@
   let feedbackTimer = 0;
   let firstOpenRow = 0; // the board scrolls here as rows ahead of it fill up
 
+  // ---- time limit (chosen on the start card, remembered on this device) ----
+  const MIN_MINUTES = 1;
+  const MAX_MINUTES = 60;
+  const minutesKey = `rollcall:minutes:${quiz.id}`;
+  let minutes = Math.round(quiz.seconds / 60);
+  try {
+    const saved = parseInt(localStorage.getItem(minutesKey), 10);
+    if (saved >= MIN_MINUTES && saved <= MAX_MINUTES) minutes = saved;
+  } catch { /* ignore */ }
+  const limit = () => minutes * 60;
+
   // ---- best score (per viewer; fine if storage is unavailable) ----
-  // Best = most names; ties go to fewer hints, then less time.
-  const bestKey = () => `rollcall:best:${quiz.id}:v2`;
+  // Best = most names; ties go to fewer hints, then less time. One per time limit.
+  const bestKey = () => `rollcall:best:${quiz.id}:v2:${minutes}m`;
   function loadBest() {
     try { return JSON.parse(localStorage.getItem(bestKey())) || null; } catch { return null; }
   }
@@ -38,7 +50,7 @@
   function bestText(best) {
     if (!best) return "";
     const hints = best.hints ? ` (${best.hints} with hints)` : "";
-    return `Your best: ${best.score}/${game.total}${hints} in ${RollCall.formatClock(best.seconds)}`;
+    return `Your best with ${minutes} min: ${best.score}/${game.total}${hints} in ${RollCall.formatClock(best.seconds)}`;
   }
 
   // ---- board ----
@@ -93,7 +105,8 @@
     state = "ready";
     renderBoard();
     updateScore();
-    el.clock.textContent = RollCall.formatClock(quiz.seconds);
+    el.clock.textContent = RollCall.formatClock(limit());
+    el.minutes.value = minutes;
     el.clock.classList.remove("low");
     el.guess.value = "";
     el.guess.disabled = true;
@@ -115,7 +128,7 @@
   function start() {
     state = "playing";
     document.body.classList.add("playing");
-    endsAt = Date.now() + quiz.seconds * 1000;
+    endsAt = Date.now() + limit() * 1000;
     el.intro.hidden = true;
     el.guess.disabled = false;
     el.guess.placeholder = "Type a name…";
@@ -142,7 +155,7 @@
     if (state !== "playing") return;
     state = "over";
     clearInterval(timer);
-    const used = Math.min(quiz.seconds, Math.round(quiz.seconds - secondsLeft()));
+    const used = Math.min(limit(), Math.round(limit() - secondsLeft()));
     game.missed().forEach((id) => fill(id, "missed"));
     for (const id of game.found) {
       if (game.isHinted(id)) {
@@ -237,6 +250,24 @@
     }
   }
 
+  function setMinutes(value) {
+    const n = Math.round(Number(value));
+    if (Number.isFinite(n) && n > 0) minutes = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, n));
+    el.minutes.value = minutes;
+    el.less.disabled = minutes <= MIN_MINUTES;
+    el.more.disabled = minutes >= MAX_MINUTES;
+    try { localStorage.setItem(minutesKey, String(minutes)); } catch { /* ignore */ }
+    if (state === "ready") {
+      el.clock.textContent = RollCall.formatClock(limit());
+      el.best.textContent = bestText(loadBest());
+    }
+  }
+  el.less.addEventListener("click", () => setMinutes(minutes - 1));
+  el.more.addEventListener("click", () => setMinutes(minutes + 1));
+  el.minutes.addEventListener("input", () => { if (el.minutes.value !== "") setMinutes(el.minutes.value); });
+  el.minutes.addEventListener("change", () => setMinutes(el.minutes.value));
+  el.minutes.addEventListener("keydown", (e) => { if (e.key === "Enter") el.minutes.blur(); });
+
   // Tapping the Hints button or a box shouldn't close the phone's keyboard.
   const keepFocus = (e) => { if (state === "playing") e.preventDefault(); };
   el.hints.addEventListener("mousedown", keepFocus);
@@ -269,4 +300,5 @@
   });
 
   reset();
+  setMinutes(minutes);
 })();

@@ -24,7 +24,8 @@ Open `index.html` in a browser to play. There's nothing to install or build.
 
 `roll-call/` is a separate game: name everything on a list before the clock runs out.
 Open `roll-call/index.html` to play. The first quiz is **US Presidents**: 45 people
-over 47 presidencies, in 10 minutes.
+over 47 presidencies. The clock starts at 10 minutes; change it (1–60) on the start
+card. Each time limit keeps its own best score.
 
 - Names fill in as you type; there's no need to press `Enter`.
 - A surname is enough. A shared surname fills in everyone who has it: "Bush" fills
