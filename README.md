@@ -33,8 +33,10 @@ over 47 presidencies, in 10 minutes.
   and once every box above a row is filled, the board scrolls that row to the top.
 - Cleveland and Trump fill both of their terms at once.
 - Misspelled? Press `Enter` and small typos are forgiven ("Eisenhauer").
-- **Easy mode** (a switch on the start card) shows each president's initials in their
-  box: "A. L." for Lincoln, "J. F. K." for Kennedy. It keeps its own best score.
+- **Hints**: stuck on one? Tap its box to see the president's initials ("A. L." for
+  Lincoln, "J. F. K." for Kennedy). The 💡 Hints button at the top shows every box's
+  initials; turn it off again whenever you like. The results show how many you named
+  on your own and how many with a hint, and the board marks those amber.
 - **Give up** shows what you missed in red. Your best score is saved on the device.
 
 To add a quiz, copy `roll-call/js/quizzes/presidents.js`: list the `answers` (with the

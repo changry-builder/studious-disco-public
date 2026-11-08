@@ -93,3 +93,17 @@ test("easy mode initials", () => {
   assert.equal(RollCall.initials("George H. W. Bush"), "G. H. W. B.");
   assert.equal(RollCall.initials("Martin Van Buren"), "M. V. B.");
 });
+
+test("tracks which answers needed a hint", () => {
+  const game = RollCall.createGame(PRESIDENTS);
+  game.guess("Lincoln");
+  assert.equal(game.hint("lincoln"), false, "a hint after naming doesn't count");
+  assert.equal(game.hint("polk"), true);
+  assert.equal(game.hint("polk"), false);
+  game.hint("biden");
+  game.guess("Polk");
+  assert.ok(game.isHinted("polk"));
+  assert.ok(!game.isHinted("lincoln"));
+  assert.equal(game.found.size, 2);
+  assert.equal(game.unaided(), 1, "Lincoln on their own, Polk with a hint, Biden not named");
+});

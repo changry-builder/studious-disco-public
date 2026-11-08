@@ -11,6 +11,7 @@
 <header class="bar">
   <div class="bar-top">
     <h1 class="brand">Roll&nbsp;Call</h1>
+    <button type="button" class="hint-toggle" id="hints" aria-pressed="false" disabled>Hints</button>
     <div class="stats">
       <span class="score" id="score">0/45</span>
       <span class="clock" id="clock">10:00</span>
@@ -31,11 +32,8 @@
     <h2 id="prompt">Name every US president</h2>
     <p>Type a name and it fills in as soon as it's right. No need to press Enter.
       Surnames are enough: “Bush” fills in both Bushes. Press Enter to try a misspelled name.</p>
-    <label class="toggle">
-      <input type="checkbox" id="easy" />
-      <span class="switch" aria-hidden="true"></span>
-      <span><strong>Easy mode</strong>: show each president's initials</span>
-    </label>
+    <p>Stuck? Tap a box to see that president's initials, or turn on <strong>Hints</strong>
+      at the top to see them all. At the end you'll see which ones you needed a hint for.</p>
     <p class="best" id="best"></p>
   </section>
   <ol class="board" id="board"></ol>
@@ -47,6 +45,11 @@
     <h2 id="results-title">Time's up</h2>
     <p class="big" id="results-score"></p>
     <p id="results-detail"></p>
+    <p class="legend" id="results-legend">
+      <span class="key found"></span>On your own
+      <span class="key assisted"></span>With a hint
+      <span class="key missed"></span>Missed
+    </p>
     <p class="best" id="results-best"></p>
     <div class="sheet-actions">
       <button type="button" class="btn" id="review">See answers</button>

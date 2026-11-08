@@ -9,7 +9,7 @@
     best: $("best"), board: $("board"), scroller: $("scroller"), results: $("results"),
     resultsTitle: $("results-title"), resultsScore: $("results-score"),
     resultsDetail: $("results-detail"), resultsBest: $("results-best"),
-    review: $("review"), again: $("again"), easy: $("easy"),
+    review: $("review"), again: $("again"), hints: $("hints"),
   };
 
   let game = null;
@@ -20,15 +20,16 @@
   let firstOpenRow = 0; // the board scrolls here as rows ahead of it fill up
 
   // ---- best score (per viewer; fine if storage is unavailable) ----
-  // Easy mode keeps its own best score.
-  const bestKey = () => `rollcall:best:${quiz.id}${el.easy.checked ? ":easy" : ""}`;
+  // Best = most names; ties go to fewer hints, then less time.
+  const bestKey = () => `rollcall:best:${quiz.id}:v2`;
   function loadBest() {
     try { return JSON.parse(localStorage.getItem(bestKey())) || null; } catch { return null; }
   }
   function saveBest(result) {
     const best = loadBest();
     const better = !best || result.score > best.score ||
-      (result.score === best.score && result.seconds < best.seconds);
+      (result.score === best.score && result.hints < best.hints) ||
+      (result.score === best.score && result.hints === best.hints && result.seconds < best.seconds);
     if (better) {
       try { localStorage.setItem(bestKey(), JSON.stringify(result)); } catch { /* ignore */ }
     }
@@ -36,8 +37,8 @@
   }
   function bestText(best) {
     if (!best) return "";
-    const mode = el.easy.checked ? " on easy" : "";
-    return `Your best${mode}: ${best.score}/${game.total} in ${RollCall.formatClock(best.seconds)}`;
+    const hints = best.hints ? ` (${best.hints} with hints)` : "";
+    return `Your best: ${best.score}/${game.total}${hints} in ${RollCall.formatClock(best.seconds)}`;
   }
 
   // ---- board ----
@@ -60,6 +61,19 @@
       li.title = quiz.answers[id].name;
       li.classList.add(cls);
     }
+  }
+
+  // ---- hints ----
+  function showHint(id) {
+    game.hint(id);
+    for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) li.classList.add("show-hint");
+  }
+
+  function setHintsOn(on) {
+    el.hints.setAttribute("aria-pressed", String(on));
+    document.body.classList.toggle("hints-on", on);
+    // Every box still to be named shows its hint now, so they all count as hinted.
+    if (on) game.missed().forEach((id) => game.hint(id));
   }
 
   function updateScore() {
@@ -93,6 +107,8 @@
     document.body.classList.remove("over", "playing");
     firstOpenRow = 0;
     el.scroller.scrollTop = 0;
+    el.hints.disabled = true;
+    setHintsOn(false);
     say("");
   }
 
@@ -105,6 +121,7 @@
     el.guess.placeholder = "Type a name…";
     el.action.textContent = "Give up";
     el.action.classList.remove("primary");
+    el.hints.disabled = false;
     el.guess.focus();
     tick();
     timer = setInterval(tick, 250);
@@ -127,6 +144,13 @@
     clearInterval(timer);
     const used = Math.min(quiz.seconds, Math.round(quiz.seconds - secondsLeft()));
     game.missed().forEach((id) => fill(id, "missed"));
+    for (const id of game.found) {
+      if (game.isHinted(id)) {
+        for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) li.classList.add("assisted");
+      }
+    }
+    el.hints.disabled = true;
+    setHintsOn(false);
     el.guess.disabled = true;
     el.guess.blur();
     el.guess.placeholder = "";
@@ -137,13 +161,18 @@
     say("");
 
     const score = game.found.size;
-    const isNewBest = saveBest({ score, seconds: used });
+    const helped = score - game.unaided();
+    const isNewBest = saveBest({ score, hints: helped, seconds: used });
     el.resultsTitle.textContent =
       reason === "done" ? "You got them all!" : reason === "time" ? "Time's up" : "Nice try";
     el.resultsScore.textContent = `${score}/${game.total}`;
-    el.resultsDetail.textContent = reason === "done"
+    const done = reason === "done"
       ? `Every one of the ${quiz.noun} in ${RollCall.formatClock(used)}.`
-      : `You named ${Math.round((score / game.total) * 100)}% of the ${quiz.noun}. Missed ones are in red.`;
+      : `You named ${Math.round((score / game.total) * 100)}% of the ${quiz.noun}.`;
+    const hintNote = score === 0 ? "" : helped === 0
+      ? " No hints needed!"
+      : ` ${score - helped} on your own, ${helped} with a hint.`;
+    el.resultsDetail.textContent = done + hintNote;
     el.resultsBest.textContent = isNewBest && score > 0 ? "New personal best!" : bestText(loadBest());
     el.results.hidden = false;
     el.again.focus();
@@ -208,16 +237,20 @@
     }
   }
 
-  // ---- easy mode (remembered on this device) ----
-  const easyKey = "rollcall:easy";
-  try { el.easy.checked = localStorage.getItem(easyKey) === "1"; } catch { /* ignore */ }
-  function applyEasy() {
-    document.body.classList.toggle("easy", el.easy.checked);
-    el.best.textContent = bestText(loadBest());
-  }
-  el.easy.addEventListener("change", () => {
-    try { localStorage.setItem(easyKey, el.easy.checked ? "1" : "0"); } catch { /* ignore */ }
-    applyEasy();
+  // Tapping the Hints button or a box shouldn't close the phone's keyboard.
+  const keepFocus = (e) => { if (state === "playing") e.preventDefault(); };
+  el.hints.addEventListener("mousedown", keepFocus);
+  el.board.addEventListener("mousedown", keepFocus);
+  el.hints.addEventListener("click", () => {
+    if (state !== "playing") return;
+    setHintsOn(el.hints.getAttribute("aria-pressed") !== "true");
+    el.guess.focus();
+  });
+  el.board.addEventListener("click", (e) => {
+    const li = e.target.closest(".slot");
+    if (!li || state !== "playing" || game.isFound(li.dataset.answer)) return;
+    showHint(li.dataset.answer);
+    el.guess.focus();
   });
 
   // ---- events ----
@@ -236,5 +269,4 @@
   });
 
   reset();
-  applyEasy();
 })();

@@ -12,6 +12,7 @@
   --bad: #b8322a;
   --bad-bg: #fbe7e5;
   --hint: #8a5a00;
+  --hint-bg: #fbefd2;
   --radius: 10px;
   color-scheme: light;
 }
@@ -28,13 +29,14 @@
     --bad: #ff8a80;
     --bad-bg: #3a1d1b;
     --hint: #f0c060;
+    --hint-bg: #3a2f14;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #11151d; --surface: #1a202b; --ink: #e9ecf2; --muted: #98a2b3; --line: #2c3443;
   --brand: #2a4f91; --good: #5fd39a; --good-bg: #173326; --bad: #ff8a80; --bad-bg: #3a1d1b;
-  --hint: #f0c060; color-scheme: dark;
+  --hint: #f0c060; --hint-bg: #3a2f14; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -121,13 +123,6 @@ body {
 .intro { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
 .intro h2 { margin: 0 0 6px; font-size: 1.25rem; }
 .intro p { margin: 6px 0; color: var(--muted); }
-.toggle { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; cursor: pointer; color: var(--ink); }
-.toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.switch { flex: none; width: 42px; height: 24px; border-radius: 12px; background: var(--line); position: relative; transition: background 0.15s; }
-.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); transition: transform 0.15s; }
-.toggle input:checked + .switch { background: var(--good); }
-.toggle input:checked + .switch::after { transform: translateX(18px); }
-.toggle input:focus-visible + .switch { outline: 2px solid var(--brand); outline-offset: 2px; }
 .best { font-weight: 600; color: var(--ink) !important; }
 .best:empty { display: none; }
 
@@ -158,7 +153,8 @@ body {
 .slot .num { grid-area: num; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.65rem; line-height: 1.2; }
 .slot .name { grid-area: name; font-weight: 600; font-size: 0.8rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
 .slot .name:empty::before { content: ""; display: block; height: 0.85em; width: 85%; border-bottom: 2px dotted var(--line); }
-.easy .slot .name:empty::before {
+.hints-on .slot .name:empty::before,
+.slot.show-hint .name:empty::before {
   content: attr(data-hint);
   height: auto;
   width: auto;
@@ -172,6 +168,11 @@ body {
 .slot.found .num { color: var(--good); }
 .slot.missed { background: var(--bad-bg); border-color: transparent; }
 .slot.missed .name, .slot.missed .num { color: var(--bad); }
+.playing .slot:not(.found) { cursor: pointer; }
+.slot { -webkit-tap-highlight-color: transparent; }
+.playing .slot:not(.found):active { transform: scale(0.97); }
+.slot.found.assisted { background: var(--hint-bg); }
+.slot.found.assisted .num { color: var(--hint); }
 .slot.pop { animation: pop 0.45s ease-out; }
 
 /* ---- results sheet ---- */
@@ -204,6 +205,29 @@ body {
 .sheet-card p { margin: 6px 0; color: var(--muted); }
 .sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
 .sheet-actions .btn { flex: 1; border-color: var(--line); padding: 12px; }
+
+.hint-toggle {
+  margin-left: auto;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.hint-toggle::before { content: "💡 "; }
+.hint-toggle[aria-pressed="true"] { background: #f2c14e; border-color: #f2c14e; color: #1b2233; }
+.hint-toggle:disabled { opacity: 0.4; cursor: default; }
+
+.legend { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 6px; font-size: 0.85rem; }
+.legend .key { width: 12px; height: 12px; border-radius: 3px; margin-left: 6px; }
+.legend .key.found { background: var(--good-bg); border: 1px solid var(--good); }
+.legend .key.assisted { background: var(--hint-bg); border: 1px solid var(--hint); }
+.legend .key.missed { background: var(--bad-bg); border: 1px solid var(--bad); }
 
 .shake { animation: shake 0.3s; }
 

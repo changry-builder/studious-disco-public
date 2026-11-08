@@ -54,6 +54,7 @@
   function createGame(quiz) {
     const index = buildIndex(quiz);
     const found = new Set();
+    const hinted = new Set(); // answers whose hint was shown before they were named
 
     function lookup(key, fuzzy) {
       if (index.has(key)) return [...index.get(key)];
@@ -88,10 +89,22 @@
       return { type: "found", ids: open };
     }
 
+    // Record that an answer's hint was shown. Hints for answers already named don't count.
+    function hint(id) {
+      if (found.has(id) || hinted.has(id)) return false;
+      hinted.add(id);
+      return true;
+    }
+
     return {
       quiz,
       guess,
+      hint,
       found,
+      hinted,
+      isHinted: (id) => hinted.has(id),
+      // named without seeing the hint
+      unaided: () => [...found].filter((id) => !hinted.has(id)).length,
       total: Object.keys(quiz.answers).length,
       isFound: (id) => found.has(id),
       isComplete: () => found.size === Object.keys(quiz.answers).length,
