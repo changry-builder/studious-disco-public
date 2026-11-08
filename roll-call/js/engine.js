@@ -99,10 +99,15 @@
     };
   }
 
+  // Easy-mode hint: "Ulysses S. Grant" → "U. S. G.", "Martin Van Buren" → "M. V. B."
+  function initials(name) {
+    return name.split(/[\s.]+/).filter(Boolean).map((w) => `${w[0].toUpperCase()}.`).join(" ");
+  }
+
   function formatClock(seconds) {
     const s = Math.max(0, Math.ceil(seconds));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
-  return { normalize, distance, buildIndex, createGame, formatClock };
+  return { normalize, distance, buildIndex, createGame, formatClock, initials };
 });

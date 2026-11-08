@@ -86,3 +86,10 @@ test("formats the clock", () => {
   assert.equal(RollCall.formatClock(61.2), "1:02");
   assert.equal(RollCall.formatClock(-3), "0:00");
 });
+
+test("easy mode initials", () => {
+  assert.equal(RollCall.initials("Abraham Lincoln"), "A. L.");
+  assert.equal(RollCall.initials("Ulysses S. Grant"), "U. S. G.");
+  assert.equal(RollCall.initials("George H. W. Bush"), "G. H. W. B.");
+  assert.equal(RollCall.initials("Martin Van Buren"), "M. V. B.");
+});

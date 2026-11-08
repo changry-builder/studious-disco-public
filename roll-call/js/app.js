@@ -9,7 +9,7 @@
     best: $("best"), board: $("board"), scroller: $("scroller"), results: $("results"),
     resultsTitle: $("results-title"), resultsScore: $("results-score"),
     resultsDetail: $("results-detail"), resultsBest: $("results-best"),
-    review: $("review"), again: $("again"),
+    review: $("review"), again: $("again"), easy: $("easy"),
   };
 
   let game = null;
@@ -20,22 +20,24 @@
   let firstOpenRow = 0; // the board scrolls here as rows ahead of it fill up
 
   // ---- best score (per viewer; fine if storage is unavailable) ----
-  const bestKey = `rollcall:best:${quiz.id}`;
+  // Easy mode keeps its own best score.
+  const bestKey = () => `rollcall:best:${quiz.id}${el.easy.checked ? ":easy" : ""}`;
   function loadBest() {
-    try { return JSON.parse(localStorage.getItem(bestKey)) || null; } catch { return null; }
+    try { return JSON.parse(localStorage.getItem(bestKey())) || null; } catch { return null; }
   }
   function saveBest(result) {
     const best = loadBest();
     const better = !best || result.score > best.score ||
       (result.score === best.score && result.seconds < best.seconds);
     if (better) {
-      try { localStorage.setItem(bestKey, JSON.stringify(result)); } catch { /* ignore */ }
+      try { localStorage.setItem(bestKey(), JSON.stringify(result)); } catch { /* ignore */ }
     }
     return better;
   }
   function bestText(best) {
     if (!best) return "";
-    return `Your best: ${best.score}/${game.total} in ${RollCall.formatClock(best.seconds)}`;
+    const mode = el.easy.checked ? " on easy" : "";
+    return `Your best${mode}: ${best.score}/${game.total} in ${RollCall.formatClock(best.seconds)}`;
   }
 
   // ---- board ----
@@ -47,6 +49,7 @@
       li.dataset.answer = slot.answer;
       li.dataset.index = i;
       li.innerHTML = `<span class="num">${slot.label}</span><span class="name"></span><span class="sub">${slot.sub}</span>`;
+      li.querySelector(".name").dataset.hint = RollCall.initials(quiz.answers[slot.answer].name);
       el.board.appendChild(li);
     });
   }
@@ -205,6 +208,18 @@
     }
   }
 
+  // ---- easy mode (remembered on this device) ----
+  const easyKey = "rollcall:easy";
+  try { el.easy.checked = localStorage.getItem(easyKey) === "1"; } catch { /* ignore */ }
+  function applyEasy() {
+    document.body.classList.toggle("easy", el.easy.checked);
+    el.best.textContent = bestText(loadBest());
+  }
+  el.easy.addEventListener("change", () => {
+    try { localStorage.setItem(easyKey, el.easy.checked ? "1" : "0"); } catch { /* ignore */ }
+    applyEasy();
+  });
+
   // ---- events ----
   el.guess.addEventListener("input", () => check(false));
   el.entry.addEventListener("submit", (e) => { e.preventDefault(); check(true); });
@@ -221,4 +236,5 @@
   });
 
   reset();
+  applyEasy();
 })();
