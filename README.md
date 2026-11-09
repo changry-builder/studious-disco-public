@@ -39,7 +39,8 @@ presidencies.
   on 💡 Hints at the top to see them all.
 
 **Say it** (two players): the quizmaster holds the phone and the player answers out
-loud. **Constitutional Amendments** asks for all 27, from the Bill of Rights on.
+loud. **Constitutional Amendments** asks for either the Bill of Rights (1st–10th) or
+all 27; pick on the start card. Each choice has its own time limit and best scores.
 
 - The answers start hidden. The quizmaster taps 👁 Answers to show or hide them; a
   ticked-off answer always shows. 💡 hints never reveal the answer.
@@ -54,7 +55,7 @@ Both kinds:
   named unaided and how many with a hint, and the board marks hinted ones amber.
 
 To add a quiz, copy a file in `roll-call/js/quizzes/` (`presidents.js` for type-it,
-`amendments.js` for say-it) and add a `<script>` tag for it in
+`amendments.js` for say-it; its `variants` show how to offer a shorter version) and add a `<script>` tag for it in
 `roll-call/index.html`. It appears on the game list. `npm test` checks that no type-it
 answer fills in partway through typing someone else's name.
 

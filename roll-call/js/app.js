@@ -17,10 +17,11 @@
     resultsTitle: $("results-title"), resultsScore: $("results-score"),
     resultsDetail: $("results-detail"), resultsBest: $("results-best"),
     review: $("review"), again: $("again"), hints: $("hints"), answers: $("answers"),
-    minutes: $("minutes"), less: $("less"), more: $("more"),
+    minutes: $("minutes"), less: $("less"), more: $("more"), variants: $("variants"),
   };
 
-  let quiz = null;
+  let base = null; // the quiz as defined
+  let quiz = null; // what's being played: `base`, cut down to the chosen variant
   let game = null;
   let state = "ready"; // ready | playing | over
   let endsAt = 0;
@@ -90,17 +91,51 @@
       document.title = "Roll Call";
       return;
     }
-    quiz = next;
+    base = next;
     document.body.dataset.screen = "quiz";
-    document.body.dataset.mode = quiz.mode;
-    document.title = `${quiz.title} · Roll Call`;
+    document.body.dataset.mode = base.mode;
+    document.title = `${base.title} · Roll Call`;
+    el.instructions.innerHTML = base.instructions.map((p) => `<p>${p}</p>`).join("");
+    const variants = base.variants || [];
+    const savedVariant = load(`rollcall:variant:${base.id}`);
+    choose(variants.find((v) => v.id === savedVariant) || variants[0] || null);
+  }
+
+  // Some quizzes offer a choice on the start card, such as Bill of Rights or all 27.
+  // Each choice is played as its own quiz, with its own time limit and best scores.
+  function choose(variant) {
+    quiz = base;
+    if (variant) {
+      const slots = base.slots.slice(0, variant.count || base.slots.length);
+      const answers = {};
+      for (const s of slots) answers[s.answer] = base.answers[s.answer];
+      quiz = { ...base, id: `${base.id}:${variant.id}`, prompt: variant.prompt,
+        seconds: variant.seconds || base.seconds, slots, answers };
+      store(`rollcall:variant:${base.id}`, variant.id);
+    }
+    renderVariants(variant);
     minutes = Math.round(quiz.seconds / 60);
     const saved = parseInt(load(minutesKey()), 10);
     if (saved >= MIN_MINUTES && saved <= MAX_MINUTES) minutes = saved;
     el.prompt.textContent = quiz.prompt;
-    el.instructions.innerHTML = quiz.instructions.map((p) => `<p>${p}</p>`).join("");
     reset();
     setMinutes(minutes);
+  }
+
+  function renderVariants(current) {
+    el.variants.innerHTML = "";
+    el.variants.hidden = !base.variants;
+    for (const v of base.variants || []) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(v === current));
+      b.innerHTML = "<strong></strong><span></span>";
+      b.querySelector("strong").textContent = v.label;
+      b.querySelector("span").textContent = v.sub || "";
+      b.addEventListener("click", () => { if (state !== "playing") choose(v); });
+      el.variants.appendChild(b);
+    }
   }
 
   // ---- board ----

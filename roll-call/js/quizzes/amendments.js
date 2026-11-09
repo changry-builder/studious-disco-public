@@ -105,8 +105,15 @@
     id: "amendments",
     mode: "say",
     title: "Constitutional Amendments",
-    blurb: "All 27, from the Bill of Rights on. One person reads, one answers out loud.",
+    blurb: "The Bill of Rights or all 27. One person reads, one answers out loud.",
     prompt: "Name the 27 amendments to the US Constitution",
+    // Choices on the start card. `count` plays only the first that many amendments.
+    variants: [
+      { id: "bill-of-rights", label: "Bill of Rights", sub: "1st–10th", count: 10, seconds: 5 * 60,
+        prompt: "Name the 10 amendments in the Bill of Rights" },
+      { id: "all", label: "All 27", sub: "1st–27th", seconds: 10 * 60,
+        prompt: "Name the 27 amendments to the US Constitution" },
+    ],
     noun: "amendments",
     seconds: 10 * 60,
     instructions: [
