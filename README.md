@@ -42,9 +42,11 @@ presidencies.
 loud. **Constitutional Amendments** asks for either the Bill of Rights (1st–10th) or
 all 27; pick on the start card. Each choice has its own time limit and best scores.
 
-- The answers start hidden. The quizmaster taps 👁 Answers to show or hide them; a
-  ticked-off answer always shows. 💡 hints never reveal the answer.
-- Tap an amendment when the player gets it; tap again to undo a mistake.
+- The answers start hidden. The quizmaster taps 👁 on an amendment to see just that
+  answer, or 👁 Answers at the top to see them all. Neither gives a point.
+- When the player gets one, tap the amendment: if its answer is hidden, the first tap
+  shows it so the quizmaster can check, and the second gives the point. If it's already
+  showing, one tap does it. Tap a ticked one to undo.
 - Tap 💡 on an amendment for a hint the quizmaster can read out.
 
 Both kinds:

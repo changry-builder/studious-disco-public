@@ -151,7 +151,10 @@
         li.innerHTML = `<span class="num"></span><span class="year"></span>
           <span class="name"></span><span class="detail"></span>
           <span class="concealed">Answer hidden</span><span class="hint-text"></span>
-          <button type="button" class="hint-btn" aria-label="Show a hint">💡</button>`;
+          <span class="card-actions">
+            <button type="button" class="hint-btn" aria-label="Show a hint">💡</button>
+            <button type="button" class="reveal-btn" aria-label="Show this answer" aria-pressed="false">👁</button>
+          </span>`;
         li.querySelector(".num").textContent = slot.label;
         li.querySelector(".year").textContent = slot.sub;
         li.querySelector(".name").textContent = answer.name;
@@ -331,6 +334,17 @@
     }
   }
 
+  // Say quizzes: is this answer on screen for the quizmaster?
+  function answerShowing(li) {
+    return document.body.classList.contains("answers-on") || li.classList.contains("revealed");
+  }
+
+  // Show or hide one answer without scoring it.
+  function setRevealed(li, on) {
+    li.classList.toggle("revealed", on);
+    li.querySelector(".reveal-btn").setAttribute("aria-pressed", String(on));
+  }
+
   // Say quizzes: the quizmaster taps an answer to tick it off, or again to undo.
   function tickOff(id) {
     const nowFound = game.toggle(id);
@@ -417,7 +431,13 @@
     const id = li.dataset.answer;
     if (isSay()) {
       if (e.target.closest(".hint-btn")) showHint(id);
-      else tickOff(id);
+      else if (e.target.closest(".reveal-btn")) setRevealed(li, !li.classList.contains("revealed"));
+      else if (game.isFound(id) || answerShowing(li)) tickOff(id);
+      else {
+        // First tap on a hidden answer shows it; the second gives the point.
+        setRevealed(li, true);
+        say(`Tap ${quiz.slots[li.dataset.index].label} again to give the point`, "hint");
+      }
       return;
     }
     if (game.isFound(id)) return;

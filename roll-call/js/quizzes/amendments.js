@@ -118,7 +118,8 @@
     seconds: 10 * 60,
     instructions: [
       "For two people. The <strong>quizmaster</strong> holds the phone; the <strong>player</strong> says what each amendment does, out loud.",
-      "The answers start hidden. Tap 👁 <strong>Answers</strong> at the top to see them (keep the phone out of the player's view). Tap an amendment when the player gets it; tap again to undo.",
+      "The answers start hidden. Tap 👁 on an amendment to see its answer, or 👁 <strong>Answers</strong> at the top to see them all (keep the phone out of the player's view).",
+      "When the player gets one, tap the amendment: the first tap shows the answer so you can check it, the second gives the point. If the answer is already showing, one tap does it. Tap a ticked one to undo.",
       "Tap 💡 on an amendment for a clue you can read out. It doesn't show the answer. At the end you'll see which ones needed a hint.",
       "Decide together how strict to be: does the player need the number, or only what it does?",
     ],
