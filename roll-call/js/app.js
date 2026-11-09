@@ -1,11 +1,18 @@
-// Roll Call screens: the board, the clock and the results sheet.
+// Roll Call screens: the game list, the board, the clock and the results sheet.
+//
+// Two kinds of quiz share this screen:
+//   type  one player types the names (US Presidents)
+//   say   a quizmaster holds the phone and taps off what the player says out loud
+//         (Bill of Rights)
 
 (function () {
-  const quiz = window.ROLL_CALL_QUIZZES[0];
+  const QUIZZES = window.ROLL_CALL_QUIZZES;
   const $ = (id) => document.getElementById(id);
   const el = {
     score: $("score"), clock: $("clock"), entry: $("entry"), guess: $("guess"),
-    action: $("action"), feedback: $("feedback"), intro: $("intro"), prompt: $("prompt"),
+    sayNote: $("say-note"), action: $("action"), feedback: $("feedback"),
+    home: $("home"), gameList: $("game-list"), homeLink: $("home-link"),
+    intro: $("intro"), prompt: $("prompt"), instructions: $("instructions"),
     best: $("best"), board: $("board"), scroller: $("scroller"), results: $("results"),
     resultsTitle: $("results-title"), resultsScore: $("results-score"),
     resultsDetail: $("results-detail"), resultsBest: $("results-best"),
@@ -13,38 +20,39 @@
     minutes: $("minutes"), less: $("less"), more: $("more"),
   };
 
+  let quiz = null;
   let game = null;
   let state = "ready"; // ready | playing | over
   let endsAt = 0;
   let timer = 0;
   let feedbackTimer = 0;
   let firstOpenRow = 0; // the board scrolls here as rows ahead of it fill up
+  const isSay = () => quiz.mode === "say";
 
-  // ---- time limit (chosen on the start card, remembered on this device) ----
+  // ---- storage (per viewer; fine if it's unavailable) ----
+  function load(key) {
+    try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+  }
+  function store(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+  }
+
+  // ---- time limit (chosen on the start card, remembered per quiz) ----
   const MIN_MINUTES = 1;
   const MAX_MINUTES = 60;
-  const minutesKey = `rollcall:minutes:${quiz.id}`;
-  let minutes = Math.round(quiz.seconds / 60);
-  try {
-    const saved = parseInt(localStorage.getItem(minutesKey), 10);
-    if (saved >= MIN_MINUTES && saved <= MAX_MINUTES) minutes = saved;
-  } catch { /* ignore */ }
+  let minutes = 10;
+  const minutesKey = () => `rollcall:minutes:${quiz.id}`;
   const limit = () => minutes * 60;
 
-  // ---- best score (per viewer; fine if storage is unavailable) ----
-  // Best = most names; ties go to fewer hints, then less time. One per time limit.
+  // ---- best score: most named; ties go to fewer hints, then less time. One per time limit.
   const bestKey = () => `rollcall:best:${quiz.id}:v2:${minutes}m`;
-  function loadBest() {
-    try { return JSON.parse(localStorage.getItem(bestKey())) || null; } catch { return null; }
-  }
+  const loadBest = () => load(bestKey());
   function saveBest(result) {
     const best = loadBest();
     const better = !best || result.score > best.score ||
       (result.score === best.score && result.hints < best.hints) ||
       (result.score === best.score && result.hints === best.hints && result.seconds < best.seconds);
-    if (better) {
-      try { localStorage.setItem(bestKey(), JSON.stringify(result)); } catch { /* ignore */ }
-    }
+    if (better) store(bestKey(), result);
     return better;
   }
   function bestText(best) {
@@ -53,24 +61,81 @@
     return `Your best with ${minutes} min: ${best.score}/${game.total}${hints} in ${RollCall.formatClock(best.seconds)}`;
   }
 
+  // ---- screens ----
+  function renderHome() {
+    el.gameList.innerHTML = "";
+    for (const q of QUIZZES) {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = `#${q.id}`;
+      a.className = "game-card";
+      a.innerHTML = `<span class="tag ${q.mode}">${q.mode === "say" ? "Say it · 2 players" : "Type it"}</span>
+        <strong></strong><span class="blurb"></span>`;
+      a.querySelector("strong").textContent = q.title;
+      a.querySelector(".blurb").textContent = q.blurb;
+      li.appendChild(a);
+      el.gameList.appendChild(li);
+    }
+  }
+
+  function route() {
+    if (state === "playing") return;
+    const id = location.hash.slice(1);
+    const next = QUIZZES.find((q) => q.id === id);
+    if (!next) {
+      quiz = null;
+      document.body.dataset.screen = "home";
+      delete document.body.dataset.mode;
+      el.results.hidden = true;
+      document.title = "Roll Call";
+      return;
+    }
+    quiz = next;
+    document.body.dataset.screen = "quiz";
+    document.body.dataset.mode = quiz.mode;
+    document.title = `${quiz.title} · Roll Call`;
+    minutes = Math.round(quiz.seconds / 60);
+    const saved = parseInt(load(minutesKey()), 10);
+    if (saved >= MIN_MINUTES && saved <= MAX_MINUTES) minutes = saved;
+    el.prompt.textContent = quiz.prompt;
+    el.instructions.innerHTML = quiz.instructions.map((p) => `<p>${p}</p>`).join("");
+    reset();
+    setMinutes(minutes);
+  }
+
   // ---- board ----
   function renderBoard() {
     el.board.innerHTML = "";
     quiz.slots.forEach((slot, i) => {
+      const answer = quiz.answers[slot.answer];
       const li = document.createElement("li");
       li.className = "slot";
       li.dataset.answer = slot.answer;
       li.dataset.index = i;
-      li.innerHTML = `<span class="num">${slot.label}</span><span class="name"></span><span class="sub">${slot.sub}</span>`;
-      li.querySelector(".name").dataset.hint = RollCall.initials(quiz.answers[slot.answer].name);
+      if (isSay()) {
+        li.innerHTML = `<span class="num"></span>
+          <span class="name"></span><span class="detail"></span><span class="hint-text"></span>
+          <button type="button" class="hint-btn" aria-label="Show a hint">💡</button>`;
+        li.querySelector(".num").textContent = slot.label;
+        li.querySelector(".name").textContent = answer.name;
+        li.querySelector(".detail").textContent = answer.detail || "";
+        li.querySelector(".hint-text").textContent = `Hint: ${answer.hint}`;
+      } else {
+        li.innerHTML = `<span class="num">${slot.label}</span><span class="name"></span><span class="sub">${slot.sub}</span>`;
+        li.querySelector(".name").dataset.hint = RollCall.initials(answer.name);
+      }
       el.board.appendChild(li);
     });
   }
 
+  const slotsFor = (id) => el.board.querySelectorAll(`[data-answer="${id}"]`);
+
   function fill(id, cls) {
-    for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) {
-      li.querySelector(".name").textContent = quiz.answers[id].short || quiz.answers[id].name;
-      li.title = quiz.answers[id].name;
+    for (const li of slotsFor(id)) {
+      if (!isSay()) {
+        li.querySelector(".name").textContent = quiz.answers[id].short || quiz.answers[id].name;
+        li.title = quiz.answers[id].name;
+      }
       li.classList.add(cls);
     }
   }
@@ -78,7 +143,7 @@
   // ---- hints ----
   function showHint(id) {
     game.hint(id);
-    for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) li.classList.add("show-hint");
+    for (const li of slotsFor(id)) li.classList.add("show-hint");
   }
 
   function setHintsOn(on) {
@@ -111,10 +176,10 @@
     el.guess.value = "";
     el.guess.disabled = true;
     el.guess.placeholder = "Press Start to play";
+    el.sayNote.textContent = "Press Start when you're both ready";
     el.action.textContent = "Start";
     el.action.classList.add("primary");
     el.intro.hidden = false;
-    el.prompt.textContent = quiz.prompt;
     el.best.textContent = bestText(loadBest());
     el.results.hidden = true;
     document.body.classList.remove("over", "playing");
@@ -130,12 +195,16 @@
     document.body.classList.add("playing");
     endsAt = Date.now() + limit() * 1000;
     el.intro.hidden = true;
-    el.guess.disabled = false;
-    el.guess.placeholder = "Type a name…";
-    el.action.textContent = "Give up";
+    el.action.textContent = isSay() ? "End" : "Give up";
     el.action.classList.remove("primary");
-    el.hints.disabled = false;
-    el.guess.focus();
+    if (isSay()) {
+      el.sayNote.textContent = "Tap each one they name";
+    } else {
+      el.guess.disabled = false;
+      el.guess.placeholder = "Type a name…";
+      el.hints.disabled = false;
+      el.guess.focus();
+    }
     tick();
     timer = setInterval(tick, 250);
   }
@@ -158,15 +227,14 @@
     const used = Math.min(limit(), Math.round(limit() - secondsLeft()));
     game.missed().forEach((id) => fill(id, "missed"));
     for (const id of game.found) {
-      if (game.isHinted(id)) {
-        for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) li.classList.add("assisted");
-      }
+      if (game.isHinted(id)) for (const li of slotsFor(id)) li.classList.add("assisted");
     }
     el.hints.disabled = true;
     setHintsOn(false);
     el.guess.disabled = true;
     el.guess.blur();
     el.guess.placeholder = "";
+    el.sayNote.textContent = "";
     el.action.textContent = "Play again";
     el.action.classList.add("primary");
     document.body.classList.remove("playing");
@@ -192,7 +260,7 @@
   }
 
   function check(fuzzy) {
-    if (state !== "playing") return;
+    if (state !== "playing" || isSay()) return;
     const result = game.guess(el.guess.value, { fuzzy });
     if (!result) return;
     if (result.type === "found") {
@@ -213,6 +281,21 @@
       void el.guess.offsetWidth;
       el.guess.classList.add("shake");
     }
+  }
+
+  // Say quizzes: the quizmaster taps an answer to tick it off, or again to undo.
+  function tickOff(id) {
+    const nowFound = game.toggle(id);
+    for (const li of slotsFor(id)) li.classList.toggle("found", nowFound);
+    const label = quiz.slots.find((s) => s.answer === id).label;
+    if (nowFound) {
+      flash(id);
+      say(`✓ ${label}`, "good");
+    } else {
+      say(`Unticked ${label}`, "hint");
+    }
+    updateScore();
+    if (game.isComplete()) finish("done");
   }
 
   // Once every box above a row is filled, bring that row to the top of the board.
@@ -243,7 +326,7 @@
   fitViewport();
 
   function flash(id) {
-    for (const li of el.board.querySelectorAll(`[data-answer="${id}"]`)) {
+    for (const li of slotsFor(id)) {
       li.classList.remove("pop");
       void li.offsetWidth;
       li.classList.add("pop");
@@ -256,7 +339,7 @@
     el.minutes.value = minutes;
     el.less.disabled = minutes <= MIN_MINUTES;
     el.more.disabled = minutes >= MAX_MINUTES;
-    try { localStorage.setItem(minutesKey, String(minutes)); } catch { /* ignore */ }
+    store(minutesKey(), minutes);
     if (state === "ready") {
       el.clock.textContent = RollCall.formatClock(limit());
       el.best.textContent = bestText(loadBest());
@@ -268,8 +351,8 @@
   el.minutes.addEventListener("change", () => setMinutes(el.minutes.value));
   el.minutes.addEventListener("keydown", (e) => { if (e.key === "Enter") el.minutes.blur(); });
 
-  // Tapping the Hints button or a box shouldn't close the phone's keyboard.
-  const keepFocus = (e) => { if (state === "playing") e.preventDefault(); };
+  // Type quizzes: tapping the Hints button or a box shouldn't close the phone's keyboard.
+  const keepFocus = (e) => { if (state === "playing" && !isSay()) e.preventDefault(); };
   el.hints.addEventListener("mousedown", keepFocus);
   el.board.addEventListener("mousedown", keepFocus);
   el.hints.addEventListener("click", () => {
@@ -279,8 +362,15 @@
   });
   el.board.addEventListener("click", (e) => {
     const li = e.target.closest(".slot");
-    if (!li || state !== "playing" || game.isFound(li.dataset.answer)) return;
-    showHint(li.dataset.answer);
+    if (!li || state !== "playing") return;
+    const id = li.dataset.answer;
+    if (isSay()) {
+      if (e.target.closest(".hint-btn")) showHint(id);
+      else tickOff(id);
+      return;
+    }
+    if (game.isFound(id)) return;
+    showHint(id);
     el.guess.focus();
   });
 
@@ -292,13 +382,17 @@
     else if (state === "playing") finish("gave-up");
     else reset();
   });
+  el.homeLink.addEventListener("click", (e) => {
+    if (state === "playing") e.preventDefault();
+  });
   el.again.addEventListener("click", () => { reset(); start(); });
   el.review.addEventListener("click", () => { el.results.hidden = true; });
   el.results.addEventListener("click", (e) => { if (e.target === el.results) el.results.hidden = true; });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !el.results.hidden) el.results.hidden = true;
   });
+  window.addEventListener("hashchange", route);
 
-  reset();
-  setMinutes(minutes);
+  renderHome();
+  route();
 })();

@@ -107,3 +107,26 @@ test("tracks which answers needed a hint", () => {
   assert.equal(game.found.size, 2);
   assert.equal(game.unaided(), 1, "Lincoln on their own, Polk with a hint, Biden not named");
 });
+
+const { BILL_OF_RIGHTS } = require("../roll-call/js/quizzes/bill-of-rights.js");
+
+test("Bill of Rights data is complete", () => {
+  assert.equal(BILL_OF_RIGHTS.mode, "say");
+  assert.equal(BILL_OF_RIGHTS.slots.length, 10);
+  BILL_OF_RIGHTS.slots.forEach((slot) => {
+    const a = BILL_OF_RIGHTS.answers[slot.answer];
+    assert.ok(a && a.name && a.hint, `${slot.label} needs a name and a hint`);
+  });
+});
+
+test("the quizmaster can tick answers off and undo a mis-tap", () => {
+  const game = RollCall.createGame(BILL_OF_RIGHTS);
+  assert.equal(game.toggle("a2"), true);
+  game.hint("a5");
+  assert.equal(game.toggle("a5"), true);
+  assert.equal(game.toggle("a7"), true);
+  assert.equal(game.toggle("a7"), false, "tapping again unticks");
+  assert.equal(game.found.size, 2);
+  assert.equal(game.unaided(), 1);
+  assert.equal(game.missed().length, 8);
+});

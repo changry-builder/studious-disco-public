@@ -41,7 +41,7 @@
   function buildIndex(quiz) {
     const index = new Map();
     for (const [id, answer] of Object.entries(quiz.answers)) {
-      for (const spelling of answer.accept) {
+      for (const spelling of answer.accept || []) {
         const key = normalize(spelling);
         if (!key) continue;
         if (!index.has(key)) index.set(key, new Set());
@@ -96,9 +96,18 @@
       return true;
     }
 
+    // "Say" quizzes: the quizmaster ticks an answer off, or unticks a mistaken tap.
+    // Returns whether it's now found.
+    function toggle(id) {
+      if (found.has(id)) found.delete(id);
+      else found.add(id);
+      return found.has(id);
+    }
+
     return {
       quiz,
       guess,
+      toggle,
       hint,
       found,
       hinted,

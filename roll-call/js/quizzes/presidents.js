@@ -89,10 +89,16 @@
 
   const PRESIDENTS = {
     id: "presidents",
+    mode: "type",
     title: "US Presidents",
+    blurb: "Type every president's name before the clock runs out.",
     prompt: "Name every US president",
     noun: "presidents",
     seconds: 10 * 60,
+    instructions: [
+      "Type a name and it fills in as soon as it's right. No need to press Enter. Surnames are enough: “Bush” fills in both Bushes. Press Enter to try a misspelled name.",
+      "Stuck? Tap a box to see that president's initials, or turn on <strong>Hints</strong> at the top to see them all. At the end you'll see which ones you needed a hint for.",
+    ],
     answers,
     slots: TERMS.map(([n, years, answer]) => ({ label: `#${n}`, sub: years, answer })),
   };

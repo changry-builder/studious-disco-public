@@ -20,30 +20,42 @@ Open `index.html` in a browser to play. There's nothing to install or build.
   item; the fewer clues you need, the more you score.
 - **Picture sprint**: a picture sprint with pictures of school supplies.
 
-## Roll Call (single player)
+## Roll Call
 
 `roll-call/` is a separate game: name everything on a list before the clock runs out.
-Open `roll-call/index.html` to play. The first quiz is **US Presidents**: 45 people
-over 47 presidencies. The clock starts at 10 minutes; change it (1–60) on the start
-card. Each time limit keeps its own best score.
+Open `roll-call/index.html` and pick a quiz. There are two kinds:
+
+**Type it** (one player): type the names. **US Presidents** has 45 people over 47
+presidencies.
 
 - Names fill in as you type; there's no need to press `Enter`.
 - A surname is enough. A shared surname fills in everyone who has it: "Bush" fills
   both Bushes. Add a first name or initials to pick one (`John Quincy Adams`, `LBJ`).
-- The board is a compact grid. Only the board scrolls, so the typing box stays at the top,
-  and once every box above a row is filled, the board scrolls that row to the top.
 - Cleveland and Trump fill both of their terms at once.
 - Misspelled? Press `Enter` and small typos are forgiven ("Eisenhauer").
-- **Hints**: stuck on one? Tap its box to see the president's initials ("A. L." for
-  Lincoln, "J. F. K." for Kennedy). The 💡 Hints button at the top shows every box's
-  initials; turn it off again whenever you like. The results show how many you named
-  on your own and how many with a hint, and the board marks those amber.
-- **Give up** shows what you missed in red. Your best score is saved on the device.
+- The board is a compact grid. Only the board scrolls, so the typing box stays at the top,
+  and once every box above a row is filled, the board scrolls that row to the top.
+- **Hints**: tap a box to see that president's initials ("A. L." for Lincoln), or turn
+  on 💡 Hints at the top to see them all.
 
-To add a quiz, copy `roll-call/js/quizzes/presidents.js`: list the `answers` (with the
-spellings that count) and the board's `slots`, then add a `<script>` tag for it in
-`roll-call/index.html`. `npm test` checks that no answer fills in partway through
-typing someone else's name.
+**Say it** (two players): the quizmaster holds the phone and the player answers out
+loud. **The Bill of Rights** asks for the 10 amendments.
+
+- The answers appear only after Start, so the player can't read them beforehand.
+- Tap an amendment when the player gets it; tap again to undo a mistake.
+- Tap 💡 on an amendment for a hint the quizmaster can read out.
+
+Both kinds:
+
+- Pick the time limit (1–60 minutes) on the start card. Each time limit keeps its own
+  best score, saved on the device.
+- **Give up** / **End** shows what was missed in red. The results say how many were
+  named unaided and how many with a hint, and the board marks hinted ones amber.
+
+To add a quiz, copy a file in `roll-call/js/quizzes/` (`presidents.js` for type-it,
+`bill-of-rights.js` for say-it) and add a `<script>` tag for it in
+`roll-call/index.html`. It appears on the game list. `npm test` checks that no type-it
+answer fills in partway through typing someone else's name.
 
 ## Picture sprint
 

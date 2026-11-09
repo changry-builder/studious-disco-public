@@ -7,10 +7,10 @@
 <title>Roll Call</title>
 <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body data-screen="home">
 <header class="bar">
   <div class="bar-top">
-    <h1 class="brand">Roll&nbsp;Call</h1>
+    <h1 class="brand"><a href="#" id="home-link" aria-label="Roll Call: all games">Roll&nbsp;Call</a></h1>
     <button type="button" class="hint-toggle" id="hints" aria-pressed="false" disabled>Hints</button>
     <div class="stats">
       <span class="score" id="score">0/45</span>
@@ -21,6 +21,7 @@
     <input id="guess" type="text" inputmode="text" enterkeyhint="done"
            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
            placeholder="Press Start to play" aria-label="Type a name" disabled />
+    <span class="say-note" id="say-note">Press Start when you're both ready</span>
     <button type="button" class="btn primary" id="action">Start</button>
   </form>
   <p class="feedback" id="feedback" aria-live="polite"></p>
@@ -28,12 +29,13 @@
 
 <main class="scroller" id="scroller">
 <div class="wrap">
+  <section class="home" id="home">
+    <h2>Pick a game</h2>
+    <ul class="game-list" id="game-list"></ul>
+  </section>
   <section class="intro" id="intro">
-    <h2 id="prompt">Name every US president</h2>
-    <p>Type a name and it fills in as soon as it's right. No need to press Enter.
-      Surnames are enough: “Bush” fills in both Bushes. Press Enter to try a misspelled name.</p>
-    <p>Stuck? Tap a box to see that president's initials, or turn on <strong>Hints</strong>
-      at the top to see them all. At the end you'll see which ones you needed a hint for.</p>
+    <h2 id="prompt"></h2>
+    <div id="instructions"></div>
     <div class="timepick">
       <label for="minutes">Time limit</label>
       <div class="stepper">
@@ -69,6 +71,7 @@
 
 <script src="js/engine.js"></script>
 <script src="js/quizzes/presidents.js"></script>
+<script src="js/quizzes/bill-of-rights.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
