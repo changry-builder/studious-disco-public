@@ -108,19 +108,23 @@ test("tracks which answers needed a hint", () => {
   assert.equal(game.unaided(), 1, "Lincoln on their own, Polk with a hint, Biden not named");
 });
 
-const { BILL_OF_RIGHTS } = require("../roll-call/js/quizzes/bill-of-rights.js");
+const { AMENDMENTS } = require("../roll-call/js/quizzes/amendments.js");
 
-test("Bill of Rights data is complete", () => {
-  assert.equal(BILL_OF_RIGHTS.mode, "say");
-  assert.equal(BILL_OF_RIGHTS.slots.length, 10);
-  BILL_OF_RIGHTS.slots.forEach((slot) => {
-    const a = BILL_OF_RIGHTS.answers[slot.answer];
+test("amendments data is complete", () => {
+  assert.equal(AMENDMENTS.mode, "say");
+  assert.equal(AMENDMENTS.slots.length, 27);
+  AMENDMENTS.slots.forEach((slot, i) => {
+    assert.equal(parseInt(slot.label, 10), i + 1);
+    assert.match(slot.sub, /^1[789]\d\d$/, `${slot.label} needs a ratification year`);
+    const a = AMENDMENTS.answers[slot.answer];
     assert.ok(a && a.name && a.hint, `${slot.label} needs a name and a hint`);
   });
+  const years = AMENDMENTS.slots.map((s) => Number(s.sub));
+  assert.deepEqual(years, [...years].sort((a, b) => a - b), "ratified in order");
 });
 
 test("the quizmaster can tick answers off and undo a mis-tap", () => {
-  const game = RollCall.createGame(BILL_OF_RIGHTS);
+  const game = RollCall.createGame(AMENDMENTS);
   assert.equal(game.toggle("a2"), true);
   game.hint("a5");
   assert.equal(game.toggle("a5"), true);
@@ -128,5 +132,5 @@ test("the quizmaster can tick answers off and undo a mis-tap", () => {
   assert.equal(game.toggle("a7"), false, "tapping again unticks");
   assert.equal(game.found.size, 2);
   assert.equal(game.unaided(), 1);
-  assert.equal(game.missed().length, 8);
+  assert.equal(game.missed().length, 25);
 });

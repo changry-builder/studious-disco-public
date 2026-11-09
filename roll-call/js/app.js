@@ -16,7 +16,7 @@
     best: $("best"), board: $("board"), scroller: $("scroller"), results: $("results"),
     resultsTitle: $("results-title"), resultsScore: $("results-score"),
     resultsDetail: $("results-detail"), resultsBest: $("results-best"),
-    review: $("review"), again: $("again"), hints: $("hints"),
+    review: $("review"), again: $("again"), hints: $("hints"), answers: $("answers"),
     minutes: $("minutes"), less: $("less"), more: $("more"),
   };
 
@@ -113,10 +113,12 @@
       li.dataset.answer = slot.answer;
       li.dataset.index = i;
       if (isSay()) {
-        li.innerHTML = `<span class="num"></span>
-          <span class="name"></span><span class="detail"></span><span class="hint-text"></span>
+        li.innerHTML = `<span class="num"></span><span class="year"></span>
+          <span class="name"></span><span class="detail"></span>
+          <span class="concealed">Answer hidden</span><span class="hint-text"></span>
           <button type="button" class="hint-btn" aria-label="Show a hint">💡</button>`;
         li.querySelector(".num").textContent = slot.label;
+        li.querySelector(".year").textContent = slot.sub;
         li.querySelector(".name").textContent = answer.name;
         li.querySelector(".detail").textContent = answer.detail || "";
         li.querySelector(".hint-text").textContent = `Hint: ${answer.hint}`;
@@ -153,6 +155,12 @@
     if (on) game.missed().forEach((id) => game.hint(id));
   }
 
+  // Say quizzes: the quizmaster can show or hide the answers. They start hidden.
+  function setAnswersShown(on) {
+    el.answers.setAttribute("aria-pressed", String(on));
+    document.body.classList.toggle("answers-on", on);
+  }
+
   function updateScore() {
     el.score.textContent = `${game.found.size}/${game.total}`;
   }
@@ -187,6 +195,8 @@
     el.scroller.scrollTop = 0;
     el.hints.disabled = true;
     setHintsOn(false);
+    el.answers.disabled = true;
+    setAnswersShown(false);
     say("");
   }
 
@@ -199,6 +209,7 @@
     el.action.classList.remove("primary");
     if (isSay()) {
       el.sayNote.textContent = "Tap each one they name";
+      el.answers.disabled = false;
     } else {
       el.guess.disabled = false;
       el.guess.placeholder = "Type a name…";
@@ -231,6 +242,8 @@
     }
     el.hints.disabled = true;
     setHintsOn(false);
+    el.answers.disabled = true;
+    setAnswersShown(false);
     el.guess.disabled = true;
     el.guess.blur();
     el.guess.placeholder = "";
@@ -359,6 +372,9 @@
     if (state !== "playing") return;
     setHintsOn(el.hints.getAttribute("aria-pressed") !== "true");
     el.guess.focus();
+  });
+  el.answers.addEventListener("click", () => {
+    if (state === "playing") setAnswersShown(el.answers.getAttribute("aria-pressed") !== "true");
   });
   el.board.addEventListener("click", (e) => {
     const li = e.target.closest(".slot");
