@@ -199,3 +199,54 @@ export function itemText(entry: ScenarioEntry, cs: Case, item: Item): string {
   }
   return "Evidence.";
 }
+
+// ---------------------------------------------------------------- screen helpers (added for the UI)
+
+/** Scenario title: scenario.title, else the capitalised scenario id. */
+export function scenarioTitle(entry: ScenarioEntry): string {
+  return tOr(entry, "scenario.title", humanise(entry.facts.id), {});
+}
+/** Opening text for the case with this victim: briefing.<victim>, else one plain sentence. */
+export function briefingText(entry: ScenarioEntry, victim: CharId): string {
+  return tOr(entry, `briefing.${victim}`, "Inspector, there has been a death at the house. The victim is {name}.", { name: charName(entry, victim) });
+}
+/** Role line of a character: char.<id>.role, else "Guest". */
+export function charRole(entry: ScenarioEntry, id: CharId): string {
+  return tOr(entry, `char.${id}.role`, "Guest", {});
+}
+/** One-liner for a character: char.<id>.line, else empty. */
+export function charLine(entry: ScenarioEntry, id: CharId): string {
+  return tOr(entry, `char.${id}.line`, "", {});
+}
+/** Dossier bio: char.<id>.bio, else empty. */
+export function charBio(entry: ScenarioEntry, id: CharId): string {
+  return tOr(entry, `char.${id}.bio`, "", {});
+}
+/** Room description: room.<id>.desc, else empty. */
+export function roomDesc(entry: ScenarioEntry, id: RoomId): string {
+  return tOr(entry, `room.${id}.desc`, "", {});
+}
+/** The line shown when a spot holds nothing: room.<room>.spot.<spot>.empty, else a plain line. */
+export function spotEmpty(entry: ScenarioEntry, room: RoomId, spot: string): string {
+  return tOr(entry, `room.${room}.spot.${spot}.empty`, "Nothing of note.", {});
+}
+/** Public bond line for the dossier: bond.<from>-<to>.public, else a neutral sentence. */
+export function bondPublicLine(entry: ScenarioEntry, from: CharId, to: CharId): string {
+  return tOr(entry, `bond.${from}-${to}.public`, "{from} is closely tied to {to}.", { from: charName(entry, from), to: charName(entry, to) });
+}
+/** A suspect's reaction to a press: char.<id>.crack or char.<id>.firm, else a plain line. Flavour only. */
+export function pressReaction(entry: ScenarioEntry, id: CharId, kind: "crack" | "firm", caseSeed: number, slot: number): string {
+  const fallback = kind === "crack" ? "{name} hesitates, then changes their account." : "{name} does not budge.";
+  return tOr(entry, `char.${id}.${kind}`, fallback, { name: charName(entry, id) }, variantHash(caseSeed, id, slot));
+}
+const HONORIFICS = new Set(["lord", "lady", "dr", "colonel", "miss", "mr", "mrs", "sir", "the"]);
+/** Two-letter initials for a portrait, skipping titles: "Lord Edmund Blackthorn" -> "EB". */
+export function initials(name: string): string {
+  const words = name.split(/\s+/).filter((w) => w.length > 0);
+  const core = words.filter((w) => !HONORIFICS.has(w.toLowerCase().replace(/\./g, "")));
+  const use = core.length > 0 ? core : words;
+  if (use.length === 0) return "?";
+  const first = use[0]!.charAt(0);
+  const last = use.length > 1 ? use[use.length - 1]!.charAt(0) : (use[0]!.charAt(1) ?? "");
+  return (first + last).toUpperCase();
+}

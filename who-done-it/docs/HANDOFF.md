@@ -2,7 +2,7 @@
 
 Start here. If you are a new session asked to "read HANDOFF.md and continue", read this file, then the docs it points to, then pick up the first unticked task in `tasks.md`.
 
-Last updated: all engine work finished (Milestones 1 and 2, plus the party deck and result codes from Milestone 6). No screens exist yet.
+Last updated: the single-player game is playable start to finish in a browser. Not yet installable or deployed; party screens not built.
 
 ## What this project is
 
@@ -25,9 +25,9 @@ Last updated: all engine work finished (Milestones 1 and 2, plus the party deck 
 | M0 Scaffold | Done |
 | M1 Case engine and solver | Done and reviewed. 1,000 seeds per difficulty: 100% unique, 100% deterministic, 0% fallback. The reviewer's independent brute-force solver agreed with `solver.ts` on 6,000 cases |
 | M2 Engine tests | Done except task 2.5 (hand-built solver edge cases). 103 tests pass |
-| M3 Single-player loop | Not started |
-| M4 Content | Not started |
-| M5 Save, offline, install | Not started |
+| M3 Single-player loop | Built: every screen in `game-design.md` Section 4, the store, saving, the timer. A click-through test solves eight easy cases. Review (3.10) not done |
+| M4 Content | Text written and checked by the lead (393 entries). The text tests (4.2) and the fact-check review (4.3) are not done |
+| M5 Save, offline, install | Saving and the play timer are done (5.1, 5.2). PWA, deploy and install help (5.3 to 5.5) not started |
 | M6 Multiplayer | Engine side done: party deck, party reducer and scoring, result codes, all tested. Screens (6.1, 6.2 UI, 6.5) not started |
 | M7 Polish | Not started |
 
@@ -98,7 +98,10 @@ Installing on a phone needs the built app on an HTTPS host. The host is GitHub P
 
 - "Who was alone with the weapon" is a strong clue on easy (by design). Medium and hard add a decoy.
 - Repairs add a physical "presence record" in about 4 in 10 medium cases. They are fair, but play-testing should judge whether they feel too convenient.
-- The app itself is a placeholder screen.
+- Party mode shows "Coming soon" on Home; its engine is ready but its screens are not built.
+- The UI has only been checked in a 375 px emulated browser, never on a real phone.
+- The difficulty multiplier shown on the Result screen is a constant in `Result.tsx`; if scoring changes, change it there too.
+- The Home subtitle, difficulty blurbs and code-error messages were written by the UI agent, not checked against the style guide.
 
 ## Decisions still open
 

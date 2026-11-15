@@ -50,22 +50,22 @@ Done when: all pass, and the reviewer confirms each acceptance line maps to at l
 
 Read `game-design.md` and `architecture.md`. The UI uses placeholder text until M4.
 
-- [ ] **3.1 Store, transport stub, text renderer** — `implementer`. `app/store.ts`, `app/transport.ts` (`LocalTransport`), `app/text.ts`. Done when: unit tests show dispatch appends, reduces and notifies.
-- [ ] **3.2 Design tokens and shell** — `ui-builder`. `tokens.css`, `base.css`, bottom navigation, safe-area handling. Done when: the shell renders at 375 px with no horizontal scroll and tap targets of at least 44 px.
-- [ ] **3.3 Home, New case, Briefing** — `ui-builder`.
-- [ ] **3.4 House and Room (search, examine body)** — `ui-builder`.
-- [ ] **3.5 People, Dossier, asking** — `ui-builder`.
-- [ ] **3.6 Press flow** — `ui-builder`. Crack and stand-firm states.
-- [ ] **3.7 Notebook** — `ui-builder`. Timeline grid, Clues, Testimony, Pinned, Rules. The notebook must not highlight contradictions or mark lies.
-- [ ] **3.8 Accuse and Result** — `ui-builder`. Result uses `reveal`.
-- [ ] **3.9 Play-through test** — `test-writer`. A jsdom test plays the easy worked example from Home to a solved Result by clicking.
+- [x] **3.1 Store, transport stub, text renderer** — `implementer`. `app/store.ts`, `app/transport.ts` (`LocalTransport`), `app/text.ts`. Done when: unit tests show dispatch appends, reduces and notifies.
+- [x] **3.2 Design tokens and shell** — `ui-builder`. `tokens.css`, `base.css`, bottom navigation, safe-area handling. Done when: the shell renders at 375 px with no horizontal scroll and tap targets of at least 44 px.
+- [x] **3.3 Home, New case, Briefing** — `ui-builder`.
+- [x] **3.4 House and Room (search, examine body)** — `ui-builder`.
+- [x] **3.5 People, Dossier, asking** — `ui-builder`.
+- [x] **3.6 Press flow** — `ui-builder`. Crack and stand-firm states.
+- [x] **3.7 Notebook** — `ui-builder`. Timeline grid, Clues, Testimony, Pinned, Rules. The notebook must not highlight contradictions or mark lies.
+- [x] **3.8 Accuse and Result** — `ui-builder`. Result uses `reveal`.
+- [x] **3.9 Play-through test** — `test-writer`. A jsdom test plays the easy worked example from Home to a solved Result by clicking.
 - [ ] **3.10 Review** — `reviewer`. Includes a check that no component reads `case.truth` or `case.solution`.
 
 Done when: a human can play an easy case start to finish on a phone-sized screen.
 
 ## M4. Content
 
-- [ ] **4.1 Scenario 01 text** — `content-writer`. Read `content-style-guide.md` and `scenario-01.md`. Write `src/scenarios/blackthorn/text.ts` for every key in the style guide's table. Split into batches: characters; rooms and spots; weapons; motive and bond documents; briefings and body text.
+- [x] **4.1 Scenario 01 text** — `content-writer`. Read `content-style-guide.md` and `scenario-01.md`. Write `src/scenarios/blackthorn/text.ts` for every key in the style guide's table. Split into batches: characters; rooms and spots; weapons; motive and bond documents; briefings and body text.
 - [ ] **4.2 Text tests** — `test-writer`. Every key exists for every id; no unfilled or unknown placeholders; every limit respected.
 - [ ] **4.3 Fact check** — `reviewer`. Read every motive and bond document against the "story" column, and every claim template against the "one rule".
 
@@ -73,8 +73,8 @@ Done when: 4.2 passes and 4.3 finds no text that carries or contradicts a fact.
 
 ## M5. Save, resume, offline, install
 
-- [ ] **5.1 Persistence** — `implementer`. `app/persistence.ts` per `architecture.md` Section 4, including quarantine of bad saves. Done when: tests show a session survives a simulated reload after every action type, and a corrupted value does not crash the app.
-- [ ] **5.2 Foreground timer** — `implementer`. Elapsed time counts only while a case screen is visible.
+- [x] **5.1 Persistence** — `implementer`. `app/persistence.ts` per `architecture.md` Section 4, including quarantine of bad saves. Done when: tests show a session survives a simulated reload after every action type, and a corrupted value does not crash the app.
+- [x] **5.2 Foreground timer** — `implementer`. Elapsed time counts only while a case screen is visible.
 - [ ] **5.3 PWA** — `implementer`. `vite-plugin-pwa`, manifest, icons, update prompt on Home only. Done when: the built app loads with the network disabled after one visit, and Lighthouse reports it installable.
 - [ ] **5.4 Deploy** — `implementer`. A workflow that builds and publishes `who-done-it/dist`, triggered only by changes under `who-done-it/`. Needs the owner's hosting choice first (ADR-006).
 - [ ] **5.5 Install help** — `ui-builder`. Home shows install steps to a user who is not running installed.
