@@ -12,7 +12,7 @@
     "noUncheckedIndexedAccess": false,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals", "vite-plugin-pwa/client"]
   },
   "include": ["src", "cli", "tests", "vite.config.ts"]
 }

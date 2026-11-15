@@ -6,7 +6,7 @@ export function House() {
   const { store, solo, entry, facts } = useCase();
   const searched = solo.state.searched;
   return (
-    <Page title="The house" caseScreen>
+    <Page title="The house" back={() => store.navigate("home")} caseScreen>
       <p className="muted small">Tap a room to look around. Searching is free.</p>
       <ul className="rooms">
         {facts.rooms.map((r) => {

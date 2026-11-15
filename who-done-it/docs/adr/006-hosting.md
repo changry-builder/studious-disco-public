@@ -1,6 +1,6 @@
 # ADR-006: Hosting and install
 
-Status: accepted (host chosen; deploy method to settle in task 5.4)
+Status: accepted and built
 
 ## Decision
 
@@ -8,11 +8,11 @@ Serve the game with **GitHub Pages from the public `studious-disco-public` repos
 
 The game is a built app (Vite), unlike Capital Clash at the repository root, which is plain files. So Pages must serve the **built** `who-done-it/dist/`, not the source folder.
 
-## How to deploy (task 5.4)
+## How it deploys
 
-Use a GitHub Actions workflow that publishes Pages:
+`.github/workflows/pages.yml` at the repository root publishes Pages (the owner has set Settings, Pages, Source to "GitHub Actions"):
 
-1. Trigger on pushes to the default branch.
+1. Runs on every push, but only does anything on the repository's default branch.
 2. In `who-done-it/`: `npm ci`, `npm test`, `npm run build`.
 3. Assemble a site folder: the repository root's static files (so Capital Clash keeps working at the same address) plus `who-done-it/dist` copied to `site/who-done-it/`.
 4. Upload it with `actions/upload-pages-artifact` and publish with `actions/deploy-pages`.

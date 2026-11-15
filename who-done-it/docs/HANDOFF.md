@@ -27,7 +27,7 @@ Last updated: the single-player game is playable start to finish in a browser. N
 | M2 Engine tests | Done except task 2.5 (hand-built solver edge cases). 103 tests pass |
 | M3 Single-player loop | Built: every screen in `game-design.md` Section 4, the store, saving, the timer. A click-through test solves eight easy cases. Review (3.10) not done |
 | M4 Content | Text written and checked by the lead (393 entries). The text tests (4.2) and the fact-check review (4.3) are not done |
-| M5 Save, offline, install | Saving and the play timer are done (5.1, 5.2). PWA, deploy and install help (5.3 to 5.5) not started |
+| M5 Save, offline, install | Built: saving, play timer, offline support (service worker, manifest, icons), update prompt and install help on Home, and the Pages workflow (`.github/workflows/pages.yml` at the repository root). Checked offline in an emulated browser, including under `/who-done-it/`. **Not yet deployed or tried on a real phone** |
 | M6 Multiplayer | Engine side done: party deck, party reducer and scoring, result codes, all tested. Screens (6.1, 6.2 UI, 6.5) not started |
 | M7 Polish | Not started |
 
@@ -80,7 +80,7 @@ npm run build
 
 `show` prints one whole case: the true timeline, every lie chain, every item, and what the solver concludes. Use it to understand the engine and to debug.
 
-Installing on a phone needs the built app on an HTTPS host. The host is GitHub Pages from this repository (`adr/006-hosting.md`, which also has the iPhone and Android install steps). The deploy workflow is task 5.4 and is not built yet.
+Installing on a phone needs the built app on an HTTPS host. The host is GitHub Pages from this repository (`adr/006-hosting.md`, which also has the iPhone and Android install steps). The workflow `.github/workflows/pages.yml` publishes Capital Clash at the site root and this game at `/who-done-it/`, but only from the repository's default branch, so the game goes live when this work is merged there. Pages source is set to "GitHub Actions".
 
 ## How to add a new scenario
 
@@ -107,7 +107,7 @@ Installing on a phone needs the built app on an HTTPS host. The host is GitHub P
 
 | Decision | Who decides | Notes |
 |---|---|---|
-| How Pages is currently set up for this repository | Owner | Needed before task 5.4. ADR-006 |
+| Merging to the default branch | Owner | Nothing deploys until `claude/who-done-it` is merged into the default branch |
 | Difficulty feel | Owner, after play-testing | The table passes the acceptance run with lots of headroom. `case-engine.md` Section 7 |
 | "Where" is trivial in v1 | Owner | The body is never moved. A moved-body variant would make it a real deduction; it is an engine extension |
 | Hints | Owner | Not in v1. Scoring has no hint cost yet |

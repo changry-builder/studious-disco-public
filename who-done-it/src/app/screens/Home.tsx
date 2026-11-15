@@ -1,4 +1,6 @@
+import { useSyncExternalStore } from "react";
 import { useGame } from "../ctx";
+import { applyUpdate, installSteps, isInstalled, isUpdateReady, platform, subscribePwa } from "../pwa";
 import { Page } from "../components/Page";
 import { scenarioTitle } from "../text";
 import { scenarios } from "../../scenarios/index";
@@ -16,6 +18,8 @@ export function Home() {
       store.navigate("house");
     }
   };
+  const updateReady = useSyncExternalStore(subscribePwa, isUpdateReady, isUpdateReady);
+  const installed = isInstalled();
   return (
     <Page title={scenarioTitle(scenarios[0]!)}>
       <div className="home__title">
@@ -25,6 +29,14 @@ export function Home() {
         <p className="muted serif">A murder mystery for one phone</p>
       </div>
       <div className="stack home">
+        {updateReady && (
+          <button type="button" className="btn btn--block" onClick={applyUpdate}>
+            <span>
+              Update available
+              <span className="btn__sub">Tap to load the new version</span>
+            </span>
+          </button>
+        )}
         {solo && (
           <button type="button" className="btn btn--primary btn--block" onClick={onContinue}>
             {over ? "See how it ended" : "Continue your case"}
@@ -46,6 +58,16 @@ export function Home() {
           How to play
         </button>
       </div>
+      {!installed && (
+        <details className="card install">
+          <summary>Install on your phone to play offline</summary>
+          <ol className="install__steps">
+            {installSteps(platform()).map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </details>
+      )}
     </Page>
   );
 }

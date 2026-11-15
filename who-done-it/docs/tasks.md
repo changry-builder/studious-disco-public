@@ -75,9 +75,9 @@ Done when: 4.2 passes and 4.3 finds no text that carries or contradicts a fact.
 
 - [x] **5.1 Persistence** — `implementer`. `app/persistence.ts` per `architecture.md` Section 4, including quarantine of bad saves. Done when: tests show a session survives a simulated reload after every action type, and a corrupted value does not crash the app.
 - [x] **5.2 Foreground timer** — `implementer`. Elapsed time counts only while a case screen is visible.
-- [ ] **5.3 PWA** — `implementer`. `vite-plugin-pwa`, manifest, icons, update prompt on Home only. Done when: the built app loads with the network disabled after one visit, and Lighthouse reports it installable.
-- [ ] **5.4 Deploy** — `implementer`. A workflow that builds and publishes `who-done-it/dist`, triggered only by changes under `who-done-it/`. Needs the owner's hosting choice first (ADR-006).
-- [ ] **5.5 Install help** — `ui-builder`. Home shows install steps to a user who is not running installed.
+- [x] **5.3 PWA** — `implementer`. `vite-plugin-pwa`, manifest, icons, update prompt on Home only. Done when: the built app loads with the network disabled after one visit, and Lighthouse reports it installable.
+- [x] **5.4 Deploy** — `implementer`. A workflow that builds and publishes `who-done-it/dist`, triggered only by changes under `who-done-it/`. Needs the owner's hosting choice first (ADR-006).
+- [x] **5.5 Install help** — `ui-builder`. Home shows install steps to a user who is not running installed.
 - [ ] **5.6 Review** — `reviewer`.
 
 ## M6. Multiplayer

@@ -1,0 +1,59 @@
+# Publishes the games to GitHub Pages.
+#   /              Capital Clash: the static files at the repository root, unchanged.
+#   /who-done-it/  Who Done It?: built from who-done-it/ with Vite.
+# Needs: Settings -> Pages -> Source: "GitHub Actions".
+name: Deploy games to Pages
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Only the default branch publishes, whatever it is called.
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: who-done-it/package-lock.json
+      - name: Test Capital Clash
+        run: npm test
+      - name: Install, test and build Who Done It?
+        working-directory: who-done-it
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Assemble the site
+        run: |
+          mkdir site
+          cp -r index.html css js img site/
+          cp -r who-done-it/dist site/who-done-it
+          touch site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
