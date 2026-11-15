@@ -43,7 +43,7 @@ The player is addressed as "Inspector".
 |---|---|
 | `{room}` | "the library" (lower case, with article) |
 | `{time}` | "half past ten" |
-| `{company}` | "alone", "with Miss Beatrice", "with Dr Penrose and the Colonel" (already in the speaker's form of address) |
+| `{company}` | "with Miss Beatrice", "with Dr Penrose and the Colonel" (already in the speaker's form of address; includes the word "with") |
 | `{name}` | a person's display name |
 | `{weapon}` | "the fire poker" |
 | `{spot}` | "the fireplace" |
@@ -82,6 +82,10 @@ Limits are in characters for lines and in words for longer text. Count them and 
 | `body.wound.<class>` | what examining the body shows | none | 120 chars | 1 |
 | `body.tod.exact`, `body.tod.window` | time of death | `{time}` / `{from}`, `{to}` | 140 chars | 1 |
 | `motiveType.<type>` | label in the accusation picker | none | 20 chars | 1 |
+| `room.<id>.inline` | the room inside a sentence: "the library", "the Great Hall" | none | 30 chars | 1 |
+| `room.<id>.spot.<spot>.inline` | the spot inside a sentence: "the fireplace" | none | 30 chars | 1 |
+| `weapon.<id>.inline` | the weapon inside a sentence: "the fire poker" | none | 30 chars | 1 |
+| `slot.<n>.inline` | the time inside a sentence, for slots 0 to 5: "nine o'clock", "half past nine" | none | 24 chars | 1 |
 
 Notes on the tricky ones:
 
@@ -91,6 +95,19 @@ Notes on the tricky ones:
 - **Motive and bond documents** are the one place you state story facts, and those facts are fixed by the "story" column in `scenario-01.md`. A document must make its motive type unmistakable. It must not name a time or a room.
 - **Weapon `foundUsed`** must make clear it was the weapon used, without detail.
 - **`secret.<id>.trace`** shows someone was at the errand. It must not say when.
+
+## File format
+
+`src/scenarios/blackthorn/text.ts` exports one flat object. A key with one variant is a string; a key with several is an array of strings.
+
+```ts
+export const text: Record<string, string | string[]> = {
+  "scenario.title": "Blackthorn Hall",
+  "char.finch.claim.alone": ["I was in {room} at {time}, sir. Alone.", "...", "..."],
+};
+```
+
+The `{room}`, `{spot}`, `{weapon}` and `{time}` placeholders are filled from the `.inline` keys. `{company}` is built from the speaker's `char.<id>.address.<otherId>` entries, joined with commas and "and", after the word "with" supplied by your template (write "... {company} ..." where `{company}` already reads "with Miss Beatrice and the Colonel", or "alone" is never passed: the `claim.alone` template is used instead). `{name}` is the `char.<id>.name` of the person meant.
 
 ## Process
 
