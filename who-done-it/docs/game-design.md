@@ -28,15 +28,18 @@ Short, on one screen, always reachable from the notebook:
 
 1. Everyone stays in one room for each half-hour.
 2. Innocent people tell the truth, and they name everyone who was in the room with them.
-3. The killer lies about one thing only: where they were when the murder happened.
-4. At most one other person lies. Either they are covering for someone they have a bond with, by saying that person was with them, or they are hiding a private errand, by saying "I was alone" somewhere they were not.
-5. Show a liar true evidence that contradicts them and they will change their story. Someone who changes their story is the killer or that one other liar.
-6. The killer was alone with the victim. Nobody entered that room afterwards.
-7. The killer took the weapon from where it is kept while alone there, or it was already in the room.
-8. The killer has a motive, and proof of it can be found.
-9. Physical evidence never lies.
+3. The killer lies about one thing only: where they were in the half-hour of the murder. Everything else the killer says is true.
+4. At most one other person lies, about one half-hour only, in one of two ways:
+   - **Covering for the killer.** They have a bond with the killer that you can find. They say the killer was with them during the murder. Where they say they were, and who else they name, is true.
+   - **Hiding a private errand.** They say "I was alone" in a room they were not in.
+5. Any lie other than that cover story has the form "I was alone in such a room". So two people with no bond who name each other are both telling the truth.
+6. Show a liar any true evidence that contradicts them and they will change their story. The other liar then tells the truth. The killer tells a new lie. Someone who changes their story is the killer or that one other liar.
+7. During the murder, only the killer and the victim were in the room. Nobody entered that room afterwards.
+8. The killer took the weapon from where it is kept while alone there, or it was already in the room. A locked weapon can only be taken by someone with a key.
+9. The killer has a motive, and proof of it can be found.
+10. Physical evidence never lies.
 
-These are the engine's rules M1–M6 and L1–L7 in plain words. If the engine rules change, this list changes in the same commit.
+These are the engine's rules M1–M6 and L1–L7 in plain words, and the list must stay complete: the solver assumes exactly these, so a rule missing here would be a deduction the player cannot fairly make. If the engine rules change, this list changes in the same commit.
 
 ## 4. Screens and flows
 

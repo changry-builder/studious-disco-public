@@ -6,7 +6,7 @@ The prose around the tables is guidance for `content-writer`, who writes the dis
 
 - Scenario id: `blackthorn`. Index: `0`.
 - Setting: Blackthorn Hall, a country house in the North Riding of Yorkshire. New Year's Eve, 1926. Snow since the afternoon; the drive is impassable and the telephone line to the village still works.
-- The household gathers in the Great Hall for the midnight toast. One of them does not come. The body is found moments later.
+- The household gathers for the midnight toast. One of them does not come. The body is found moments later. (Do not name the room they gather in: any room, including the Great Hall, can be the murder room.)
 
 ## Time slots
 

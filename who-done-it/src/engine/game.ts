@@ -75,7 +75,10 @@ function addItems(state: GameState, found: Item[]): string[] {
   return out;
 }
 
-/** Evidence that validly supports each part of a correct accusation. */
+/**
+ * Evidence that validly supports each part of a correct accusation.
+ * Computed from the hidden solution: the UI must never call this. It is exported for tests.
+ */
 export function validSupport(cs: Case): { who: EvidenceRef[]; what: EvidenceRef[]; why: EvidenceRef[] } {
   const s = cs.solution;
   const who: EvidenceRef[] = [];
@@ -89,13 +92,14 @@ export function validSupport(cs: Case): { who: EvidenceRef[]; what: EvidenceRef[
   const what: EvidenceRef[] = (used.length > 0 ? used : missing).map((it) => ({ kind: "item", id: it.id }));
   if (what.length === 0) what.push({ kind: "item", id: "wound" });
   const why: EvidenceRef[] = cs.items
-    .filter((it) => it.kind === "motiveDoc" && it.link.startsWith(`${s.killer}-${cs.victim}-`) && it.link.endsWith(`-${s.motive}`))
+    .filter((it) => it.kind === "motiveDoc" && it.link === `${s.killer}-${cs.victim}-${s.motive}`)
     .map((it) => ({ kind: "item", id: it.id }));
   return { who, what, why };
 }
 
 /** Pure. An action that is not allowed returns the same state object. */
 export function reduce(cs: Case, state: GameState, action: Action): GameState {
+  if (!Number.isFinite(action.at)) return state;
   const at = Math.max(state.elapsedMs, action.at);
   const over = state.solved || state.gaveUp;
 

@@ -2,7 +2,7 @@
 
 Start here. If you are a new session asked to "read HANDOFF.md and continue", read this file, then the docs it points to, then pick up the first unticked task in `tasks.md`.
 
-Last updated: end of Milestone 1 (engine and solver built and passing the acceptance run).
+Last updated: end of Milestones 1 and 2 (engine built, reviewed and tested).
 
 ## What this project is
 
@@ -23,8 +23,8 @@ Last updated: end of Milestone 1 (engine and solver built and passing the accept
 |---|---|
 | Phase 1: design docs | Done |
 | M0 Scaffold | Done |
-| M1 Case engine and solver | Done. 1,000 seeds per difficulty: 100% unique, 100% deterministic, 0% fallback. Review (task 1.9) pending |
-| M2 Engine tests | Started: the worked examples, a play-through, codes, purity and a 150-seed check exist. The fuller list in `tasks.md` M2 is not done |
+| M1 Case engine and solver | Done and reviewed. 1,000 seeds per difficulty: 100% unique, 100% deterministic, 0% fallback. The reviewer's independent brute-force solver agreed with `solver.ts` on 6,000 cases |
+| M2 Engine tests | Done except task 2.5 (hand-built solver edge cases). 93 tests pass |
 | M3 Single-player loop | Not started |
 | M4 Content | Not started |
 | M5 Save, offline, install | Not started |

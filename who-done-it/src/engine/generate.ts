@@ -375,53 +375,89 @@ function buildClaims(scenario: Scenario, rng: Rng, P: DifficultyParams, p: Plan,
     }
   }
   const chain = (c: CharId, t: number): ClaimChain => chains.find((ch) => ch.speaker === c && ch.slot === t)!;
-  const pure = pureInnocents(p);
   const atTm = slotAssignment(p, loc, p.tm);
+  const lie = (claim: Claim): ClaimVersion => ({ claim, lie: true, refutedBy: [] }); // refutedBy: see fillRefuters
 
   // Second liar
   if (p.second?.kind === "shield") {
     const s = p.second.who;
     const truth = truthClaim(scenario, p, loc, s, p.tm);
     const vouch: Claim = { room: truth.room, with: order.filter((d) => truth.with.includes(d) || d === p.killer) };
-    const refuters = occupants(atTm, truth.room).filter((c) => pure.includes(c)).map((c) => claimRef(c, p.tm, 0));
-    chain(s, p.tm).versions = [
-      { claim: vouch, lie: true, refutedBy: refuters },
-      { claim: truth, lie: false, refutedBy: [] },
-    ];
+    chain(s, p.tm).versions = [lie(vouch), { claim: truth, lie: false, refutedBy: [] }];
   }
   if (p.second?.kind === "secretKeeper") {
     const q = p.second.who;
     const ts = p.ts!;
-    const atTs = slotAssignment(p, loc, ts);
-    const lieRoom = rng.pick(secretLieRooms(scenario, p, atTs));
-    const truthful = p.suspects.filter((c) => c !== q && !(c === p.killer && ts === p.tm));
-    const refuters = occupants(atTs, lieRoom).filter((c) => truthful.includes(c)).map((c) => claimRef(c, ts, 0));
-    chain(q, ts).versions = [
-      { claim: { room: lieRoom, with: [] }, lie: true, refutedBy: refuters },
-      { claim: truthClaim(scenario, p, loc, q, ts), lie: false, refutedBy: [] },
-    ];
+    const lieRoom = rng.pick(secretLieRooms(scenario, p, slotAssignment(p, loc, ts)));
+    chain(q, ts).versions = [lie({ room: lieRoom, with: [] }), { claim: truthClaim(scenario, p, loc, q, ts), lie: false, refutedBy: [] }];
   }
 
   // Killer: catchable lies, then the final one
   const versions: ClaimVersion[] = [];
   for (const kind of p.chain) {
-    if (kind === "occupied") {
-      const rc = rng.pick(occupiedLieRooms(scenario, P, p, atTm));
-      const refuters = occupants(atTm, rc).filter((c) => pure.includes(c)).map((c) => claimRef(c, p.tm, 0));
-      versions.push({ claim: { room: rc, with: [] }, lie: true, refutedBy: refuters });
-    } else if (kind === "shielded") {
-      const s = p.second!.who;
-      const rs = atTm[s]!;
-      const refuters = occupants(atTm, rs).filter((c) => pure.includes(c)).map((c) => claimRef(c, p.tm, 0));
-      refuters.push(claimRef(s, p.tm, 1));
-      versions.push({ claim: { room: rs, with: [s] }, lie: true, refutedBy: refuters });
-    } else {
-      versions.push({ claim: { room: p.secretRoom!, with: [] }, lie: true, refutedBy: [claimRef(p.second!.who, p.tm, 1)] });
-    }
+    if (kind === "occupied") versions.push(lie({ room: rng.pick(occupiedLieRooms(scenario, P, p, atTm)), with: [] }));
+    else if (kind === "shielded") versions.push(lie({ room: atTm[p.second!.who]!, with: [p.second!.who] }));
+    else versions.push(lie({ room: p.secretRoom!, with: [] }));
   }
-  versions.push({ claim: { room: rng.pick(finalLieRooms(scenario, p, atTm)), with: [] }, lie: true, refutedBy: [] });
+  versions.push(lie({ room: rng.pick(finalLieRooms(scenario, p, atTm)), with: [] }));
   chain(p.killer, p.tm).versions = versions;
   return chains;
+}
+
+// ---------------------------------------------------------------- refuters
+
+/** Where a statement or record says people were (pos) and were not (neg). */
+interface Assertion {
+  pos: Record<CharId, RoomId>;
+  neg: Record<CharId, RoomId>;
+}
+
+function claimAssertion(people: CharId[], speaker: CharId, claim: Claim): Assertion {
+  const a: Assertion = { pos: {}, neg: {} };
+  for (const d of people) {
+    if (d === speaker || claim.with.includes(d)) a.pos[d] = claim.room;
+    else a.neg[d] = claim.room;
+  }
+  return a;
+}
+
+function conflicts(a: Assertion, b: Assertion, people: CharId[]): boolean {
+  for (const d of people) {
+    const pa = a.pos[d], pb = b.pos[d];
+    if (pa !== undefined && pb !== undefined && pa !== pb) return true;
+    if (pa !== undefined && b.neg[d] === pa) return true;
+    if (pb !== undefined && a.neg[d] === pb) return true;
+  }
+  return false;
+}
+
+/**
+ * Rule L5: a liar withdraws a claim when shown ANY true evidence that contradicts it.
+ * So every catchable lie's refutedBy is computed here, generically, from all true evidence
+ * for that slot: other people's true claims and presence records. Called again after each
+ * repair, because repairs add presence records.
+ */
+function fillRefuters(p: Plan, claims: ClaimChain[], items: Item[]): void {
+  for (const ch of claims) {
+    const people = [...p.suspects, ...(ch.slot <= p.tm ? [p.victim] : [])];
+    ch.versions.forEach((v, index) => {
+      v.refutedBy = [];
+      if (!v.lie || index === ch.versions.length - 1) return; // truths and the last version stand
+      const mine = claimAssertion(people, ch.speaker, v.claim);
+      for (const other of claims) {
+        if (other.slot !== ch.slot || other.speaker === ch.speaker) continue;
+        other.versions.forEach((ov, oi) => {
+          if (!ov.lie && conflicts(mine, claimAssertion(people, other.speaker, ov.claim), people)) {
+            v.refutedBy.push(claimRef(other.speaker, ch.slot, oi));
+          }
+        });
+      }
+      for (const it of items) {
+        if (it.kind !== "presence" || it.slot !== ch.slot) continue;
+        if (conflicts(mine, { pos: { [it.who]: it.at }, neg: {} }, people)) v.refutedBy.push({ kind: "item", id: it.id });
+      }
+    });
+  }
 }
 
 // ---------------------------------------------------------------- items
@@ -506,6 +542,7 @@ function tryBuild(scenario: Scenario, rng: Rng, P: DifficultyParams, fallback: b
 
   // 9. Verify and repair
   for (;;) {
+    fillRefuters(plan, b.claims, b.items);
     const { kb } = buildKB(scenario, draft(scenario, b));
     const res = solve(kb);
     if (!res.fits.some(isTruth)) {
@@ -546,6 +583,17 @@ function tryBuild(scenario: Scenario, rng: Rng, P: DifficultyParams, fallback: b
   }
 
   // 10. Quality gates
+  // Nothing true may contradict the killer's final lie, or it could never be withdrawn (section 12).
+  // The fallback's own record of the killer at the scene is the one deliberate exception.
+  if (!fallback) {
+    const last = b.claims.find((ch) => ch.speaker === plan.killer && ch.slot === plan.tm)!;
+    const probe: ClaimChain = { ...last, versions: [last.versions[last.versions.length - 1]!, last.versions[0]!] };
+    const others = b.claims.filter((ch) => ch !== last);
+    fillRefuters(plan, [...others, probe], b.items);
+    const contradicted = probe.versions[0]!.refutedBy.length > 0;
+    fillRefuters(plan, b.claims, b.items);
+    if (contradicted) return null;
+  }
   const closure = buildKB(scenario, draft(scenario, b));
   for (const ch of b.claims) {
     if (closure.versions[chainKey(ch.speaker, ch.slot)] !== ch.versions.length - 1) return null; // a lie cannot be cracked

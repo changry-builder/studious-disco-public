@@ -96,8 +96,9 @@ All display text (names, bios, clue wording) lives in a separate text file keyed
 - every eligible victim has at least 4 suspects with a motive link, and at least 6 other cast members;
 - a suspect has at most 2 motive links per victim, and they have different `type`s;
 - every non-public bond has a `doc`;
-- every wound class has at least 2 weapons;
-- at least `maxSuspects + 3` rooms (the generator needs empty rooms).
+- every wound class that has any weapon has at least 2;
+- at least `maxSuspects + 3` rooms (the generator needs empty rooms);
+- at most one character lacks a secret errand (medium always needs a secret-keeper).
 
 ### 3.2 Case (generated)
 
@@ -161,7 +162,7 @@ These are shown to the player in "How to play", in plain words. The solver assum
   - **Shield.** Has a bond toward the killer that the player can discover. Their claim for `tm` gives their true room and true companions, but falsely adds the killer. The killer's matching claim says "with the shield".
   - **Secret-keeper.** Lies about one slot `ts`, to hide a private errand. The lie is always "I was alone in room R".
 - **L4. Shape of lies.** Apart from the shield's vouch and the killer's matching claim, every lie has the form "I was alone in R". So a claim that names companions, made by someone with no bond to those companions, is true.
-- **L5. Cracking.** When a liar is shown true evidence that contradicts their current claim, they withdraw it. A second liar then tells the truth. The killer gives a new false claim. The killer's last version cannot be contradicted by any claim.
+- **L5. Cracking.** When a liar is shown **any** true evidence that contradicts their current claim, they withdraw it. A second liar then tells the truth. The killer gives a new false claim. The killer's last version cannot be contradicted by any claim.
 - **L6. Physical evidence never lies.**
 - **L7. The shield is never in the murder room.** (M1 already says so. It matters for the solver.)
 
@@ -182,6 +183,8 @@ The killer's chain for slot `tm` has `d` catchable versions followed by one fina
 
 Final version: "alone in Ru", where Ru is a room with nobody in it at `tm`, `Ru != rm`, and Ru is not the secret-keeper's true room.
 
+The "Refuted by" column shows what the generator relies on existing. The actual `refutedBy` list of every catchable lie is computed generically by `fillRefuters`: **every** true claim for that slot and every presence item that contradicts the lie is listed (rule L5). It is recomputed after each repair, because repairs add presence items. A statement or record asserts where people were and were not; two assertions conflict when they put one person in two rooms, or one says a person was in a room the other says they were not in.
+
 Each kind is used at most once per chain and each version names a different room. Order: `shielded` first if there is a shield; `secretRoom` last among the catchable ones (it needs the secret-keeper cracked first).
 
 ### 4.2 How the generator writes the second liar
@@ -197,7 +200,7 @@ The solver sees only what a player can obtain:
 
 ```ts
 interface KB {
-  suspects: CharId[]; victim: CharId; bodyRoom: RoomId; slots: number;
+  suspects: CharId[]; victim: CharId; bodyRoom: RoomId; slots: number; rooms: RoomId[];
   current: Claim[][];             // [suspect][slot]: the latest version reachable
   withdrawn: { who: CharId; slot: number }[];   // admitted lies
   bonds: { from: CharId; to: CharId }[];        // public, or its bondDoc is reachable
@@ -317,7 +320,7 @@ Cost: at most 6 suspects, 3 slots, about 40 configs, each check a few hundred op
 - `families`: apply only some of the constraint families (`opportunity`, `means`, `motive`). The generator uses that to measure **grounds**: for each innocent `X`, which families alone eliminate every hypothesis with `X` as killer. Grounds drive the difficulty checks in Section 7.
 - `ignoreAdmissions`: skip the admission rule (still using the latest claims). A case must be unique **both** with and without it (the `strict` gate). This guarantees the case is solvable by alibi, means and motive reasoning, and not only by counting who changed their story.
 
-Partial notebooks: the solver is sound for claims the player has not heard (they constrain nothing). It is **not** sound for motive documents not yet found, because "no motive" is only a valid deduction once every room has been searched. Par passes all items for that reason. Party mode (task 6.3) must account for it.
+Partial notebooks: the solver is sound for claims the player has not heard (they constrain nothing). It is **not** sound for items not yet found: "no motive" is only a valid deduction once every room has been searched, and a shield hypothesis is only considered once the bond is known (a secret bond's document may not be found yet). Par passes all items for that reason. Party mode (task 6.3) must account for it.
 
 ### 5.6 Why this is sound
 
@@ -332,7 +335,7 @@ Partial notebooks: the solver is sound for claims the player has not heard (they
 - One PRNG: **mulberry32** over a `uint32` state, using `Math.imul` and `>>> 0`. Seeded with `mix(seed, attempt)` where `mix` is a 32-bit integer hash (the murmur3 finalizer).
 - `rng.int(n)` returns `Math.floor(u * n / 4294967296)` for the next `uint32` `u`. `rng.pick`, `rng.shuffle` (Fisher–Yates) and `rng.chance(num, den)` are built on `int`.
 - Never use `Math.random`, `Date`, locale functions, `Object.keys` order of dynamic keys, or `Set`/`Map` iteration where insertion order could vary. Sort by scenario order before iterating.
-- Any change to generator code, difficulty tables, or scenario facts changes what a seed produces. Bump `GEN_VERSION` when that happens. Text-only changes do not need a bump.
+- Any change to generator code, difficulty tables, or scenario facts changes what a seed produces. Bump `GEN_VERSION` when that happens. Text-only changes do not need a bump. (`GEN_VERSION` stays 1 until the game is first deployed; no codes exist in the wild before then.)
 - A golden test stores the full JSON of a few cases and fails if they change without a `GEN_VERSION` bump.
 
 ### 6.2 Top level
@@ -357,6 +360,7 @@ Returns a case or `null`. Any step that cannot be satisfied returns `null` and t
    V = pick(scenario.victims)
    K = pick(characters with a motive link against V)
    suspects = K + (P.suspects - 1) others picked from the rest, kept in scenario order
+   (a shield is chosen first from the whole cast, by bond to K, and is always included)
 
 2. Motives
    m = pick(links(K, V)); activate it
@@ -393,7 +397,8 @@ Returns a case or `null`. Any step that cannot be satisfied returns `null` and t
      f. t == ts: secret-keeper alone in the secret room; an occupied room exists for their lie.
      g. t == tm: the count of innocents with no solid alibi is within [P.minLoose, P.maxLoose].
         Solid alibi: shares a room with an innocent Z where bond(Z -> X) does not exist.
-   Mild stickiness (a person stays put with chance 1 in 3) keeps evenings believable.
+   Each free person stays put with chance 1 in 3, else joins someone already placed with
+   chance 1 in 2, else picks a random room. This keeps evenings believable and sociable.
 
 7. Claims
    Truthful claim for every (suspect, slot) from the placement. Then overwrite the
@@ -409,10 +414,10 @@ Returns a case or `null`. Any step that cannot be satisfied returns `null` and t
    kb = buildKB(case)
    assert the true hypothesis passes                 // engine bug if not: throw
    while (not solve(kb).unique or not solve(kb, ignoreAdmissions).unique) and repairs < P.maxRepairs:
-     apply the first repair that removes a wrong fit:
-       R1 add a presence item placing a wrongly-surviving innocent at their true room at the surviving tmh
-       R2 narrow the tod window by one slot toward tm
-       R3 change disposition gone -> atScene (the used weapon is found in the murder room)
+     apply one repair, by priority, then re-solve:
+       R3 if a wrong weapon fits and the weapon is gone: disposition gone -> atScene
+       R2 else if a wrong suspect survives at a slot other than tm: narrow the tod window by one slot toward tm
+       R1 else add a presence item placing a wrongly-surviving innocent in their true room at tm
    if still not unique: return null
 
 10. Quality gates (return null if any fails)
@@ -428,9 +433,13 @@ Returns a case or `null`. Any step that cannot be satisfied returns `null` and t
 
 If 40 attempts fail, `buildFallback` builds a deliberately simple case that is unique by construction:
 - no second liar, lie depth 1, exact time of death (window width 1), disposition `atScene`;
-- one extra item: `presence(K, rm, tm)`, a physical record putting the killer in the murder room in the murder slot (in scenario 01, an entry in the victim's own hand in the room's proof spot).
+- one extra item: `presence(K, rm, tm)`, a physical record putting the killer in the murder room in the murder slot (the murder room's presence record, found at its proof spot).
 
 Proof of uniqueness: the window forces `tmh = tm`. The presence item places `K` in `rm` at `tm`, and the check allows that only when `K` is the killer. The used weapon is found, so one weapon fits. `K` has exactly one activated motive. The true hypothesis passes. So `fits` has exactly one member.
+
+The record contradicts both of the killer's claims. It is listed as a refuter of version 0 like any other evidence; the final version stands even though the record contradicts it. This is the one exception to the rule in Section 12 that nothing true contradicts the killer's final lie.
+
+Placement can still fail by chance, so the fallback loops over sub-seeds (up to 2,000, then throws; in testing it always succeeded on the first).
 
 A fallback case is flagged (`fallback: true`). The CLI reports the fallback rate per difficulty. It should be under 1%. If it is higher, tune the difficulty table; do not loosen the solver.
 
@@ -465,7 +474,7 @@ Measured with `npm run verify -- --seeds 1000` at `GEN_VERSION` 1 (seeds 0 to 99
 | Fallback cases | 0% | 0% | 0% |
 | Average attempts | 1.55 | 1.44 | 1.78 |
 | Average repairs | 0.00 | 0.43 | 0.31 |
-| Average par (questions) | 6.3 | 8.8 | 11.7 |
+| Average par (questions) | 6.3 | 8.7 | 11.7 |
 
 There is plenty of headroom (40 attempts allowed, under 2 used), so the gates can be tightened later if play-testing finds cases too easy. Re-run and update this table whenever the generator or the difficulty table changes.
 
@@ -496,11 +505,13 @@ type Action = { at: number } & (              // `at` = elapsed play time in ms,
  | { type:'accuse'; who: CharId; weapon: WeaponId; room: RoomId; motive: MotiveType;
      support: { who: EvidenceRef; what: EvidenceRef; why: EvidenceRef } }
  | { type:'pin'; ref: EvidenceRef; on: boolean }
- | { type:'tag'; suspect: CharId; tag: 'none'|'suspect'|'cleared' });
+ | { type:'tag'; suspect: CharId; tag: 'none'|'suspect'|'cleared' }
+ | { type:'giveUp' });                               // ends the case unsolved; allows reveal()
 
 function reduce(case, state, action): GameState   // pure; invalid actions return state unchanged
 ```
 
+- The reducer does not know the scenario, so it cannot tell a real spot from an invented one. The UI must only offer rooms and spots that exist.
 - **press** succeeds when the evidence is in the player's notebook and is listed in the current version's `refutedBy`. The chain advances one version and the new claim is revealed. Otherwise the press fails, the suspect stands firm, and `failedPresses` goes up. Pressing with a claim that is itself a lie always fails.
 - **accuse** is correct when who, weapon, room and motive all match the solution **and** each support ref is valid:
   - `who`: any refuter of any of the killer's lie versions, or a `presence` item placing the killer in the murder room;
@@ -571,6 +582,8 @@ What the player experiences: ask everyone about 10:30; notice three people claim
 
 ### 11.2 Medium: a chain through a secret-keeper
 
+(Hand-built to show the chain. A generated medium case also has a decoy: an innocent who was alone with the weapon, so means alone would not clear everyone as it does here.)
+
 Victim: Dr Penrose. Suspects: Lady Margaret, Julian, Violet Marsh, Colonel Forsythe, Finch.
 Bonds among them: Margaret -> Julian (public), Finch -> Margaret (public), Violet <-> Julian (secret; a love note is placed as a `bondDoc`).
 Solution: Violet, the letter opener (home: study), blackmail, in the conservatory, at S3.
@@ -610,7 +623,7 @@ What the player experiences: Finch's drawing-room story collapses against two wi
 ## 12. Edge cases and rules the code must keep
 
 - A catchable lie must name a room that makes it false **and** refutable. Never let a liar's false claim accidentally be true.
-- The final killer claim must not be contradicted by any trusted claim or presence item, or wrong hypotheses could be eliminated for the wrong reason and the killer's story would crack with no version left.
+- The final killer claim must not be contradicted by any true claim or presence item (the generator rejects the attempt if it is). Otherwise rule L5 would demand a withdrawal with no version left. The fallback's own record is the one exception (Section 6.4).
 - Repairs must never add a presence item for the killer except in the fallback.
 - A red-herring motive holder is never the secret-keeper.
 - Only one second liar. A shield and a secret-keeper never appear together.

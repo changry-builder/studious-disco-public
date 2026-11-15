@@ -30,19 +30,19 @@ Read `case-engine.md` completely first. It is the spec. If the code proves a rul
   **Acceptance for the milestone: 1,000 seeds at each of the three difficulties, 100% unique, 100% deterministic, fallback under 1%.**
 - [x] **1.7 Tune and record** — lead. Adjust the difficulty table until 1.6 passes. Write the final table and the measured rates into `case-engine.md` Section 7.
 - [x] **1.8 `game.ts`, `score.ts`** — lead. The reducer, `view`, `reveal`, scoring. Done when: a scripted action list solves the easy worked example and scores as computed by hand.
-- [ ] **1.9 Review** — `reviewer` reads the engine against `case-engine.md`; the lead does the final pass on the solver.
+- [x] **1.9 Review** — `reviewer` reads the engine against `case-engine.md`; the lead does the final pass on the solver.
 
 ## M2. Engine tests
 
 All `test-writer`. Read `case-engine.md`. Tests go in `tests/engine/`. Do not change engine code; report failures.
 
-- [ ] **2.1 Determinism** — the same (seed, difficulty) twice gives byte-identical JSON, for 200 seeds per difficulty. A golden file holds 3 full cases and fails if they change.
-- [ ] **2.2 Lying rules** — for 300 generated cases per difficulty, assert from `case.truth`: every innocent claim is true and complete; the killer's only false claims are for the murder slot; at most one second liar; every lie other than a vouch is "alone in R"; every final second-liar claim is true.
-- [ ] **2.3 Murder rules** — M1 to M6 hold in `case.truth` for the same cases.
-- [ ] **2.4 Reachability** — every lie chain reaches its last version in the closure; every `refutedBy` entry is true evidence; every item sits in a spot that exists.
+- [x] **2.1 Determinism** — the same (seed, difficulty) twice gives byte-identical JSON, for 200 seeds per difficulty. A golden file holds 3 full cases and fails if they change.
+- [x] **2.2 Lying rules** — for 300 generated cases per difficulty, assert from `case.truth`: every innocent claim is true and complete; the killer's only false claims are for the murder slot; at most one second liar; every lie other than a vouch is "alone in R"; every final second-liar claim is true.
+- [x] **2.3 Murder rules** — M1 to M6 hold in `case.truth` for the same cases.
+- [x] **2.4 Reachability** — every lie chain reaches its last version in the closure; every `refutedBy` entry is true evidence; every item sits in a spot that exists.
 - [ ] **2.5 Solver edge cases** — hand-built KBs: two suspects alone at the murder slot (not unique); a bonded pair vouching for each other (not cleared); an unbonded pair (cleared); missing `tod` item (window widens); a presence item in the murder room; two withdrawn claims (killer must be one of them).
-- [ ] **2.6 Reducer** — invalid actions leave state unchanged; a failed press counts; a press with a lie as evidence fails; accusation outcomes (wrong, weak proof, solved).
-- [ ] **2.7 Codes** — round trip for 1,000 random values; lowercase, `O`/`I`/`L` and hyphen handling; each error type.
+- [x] **2.6 Reducer** — invalid actions leave state unchanged; a failed press counts; a press with a lie as evidence fails; accusation outcomes (wrong, weak proof, solved).
+- [x] **2.7 Codes** — round trip for 1,000 random values; lowercase, `O`/`I`/`L` and hyphen handling; each error type.
 
 Done when: all pass, and the reviewer confirms each acceptance line maps to at least one test.
 

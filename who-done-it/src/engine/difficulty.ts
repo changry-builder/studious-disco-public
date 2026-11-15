@@ -17,7 +17,7 @@ export interface DifficultyParams {
   todWidth: number;
   dispositions: Disposition[];
   redHerringWeapon: boolean;
-  /** Innocents (not the second liar) with no solid alibi at the murder slot. */
+  /** Innocents (a shield counts, a secret-keeper does not) with no solid alibi at the murder slot. */
   minLoose: number;
   maxLoose: number;
   /** Constraint families that must each, alone, eliminate every innocent. */
