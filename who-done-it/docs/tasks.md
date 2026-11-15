@@ -66,7 +66,7 @@ Done when: a human can play an easy case start to finish on a phone-sized screen
 ## M4. Content
 
 - [x] **4.1 Scenario 01 text** — `content-writer`. Read `content-style-guide.md` and `scenario-01.md`. Write `src/scenarios/blackthorn/text.ts` for every key in the style guide's table. Split into batches: characters; rooms and spots; weapons; motive and bond documents; briefings and body text.
-- [ ] **4.2 Text tests** — `test-writer`. Every key exists for every id; no unfilled or unknown placeholders; every limit respected.
+- [x] **4.2 Text tests** — `test-writer`. Every key exists for every id; no unfilled or unknown placeholders; every limit respected.
 - [ ] **4.3 Fact check** — `reviewer`. Read every motive and bond document against the "story" column, and every claim template against the "one rule".
 
 Done when: 4.2 passes and 4.3 finds no text that carries or contradicts a fact.
