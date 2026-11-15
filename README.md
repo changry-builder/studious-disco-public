@@ -178,3 +178,7 @@ The script prints any city it couldn't find; add those to `MANUAL` in the script
   via [world-atlas](https://github.com/topojson/world-atlas).
 - City coordinates: [GeoNames](https://www.geonames.org/) (CC BY 4.0), via
   [all-the-cities](https://github.com/zeke/all-the-cities).
+
+## Other games in this repository
+
+- **Who Done It?** — a murder mystery for phones, in [`who-done-it/`](who-done-it/README.md). It is a separate project with its own build; nothing above applies to it.
