@@ -2,7 +2,7 @@
 
 Start here. If you are a new session asked to "read HANDOFF.md and continue", read this file, then the docs it points to, then pick up the first unticked task in `tasks.md`.
 
-Last updated: end of Milestones 1 and 2 (engine built, reviewed and tested).
+Last updated: all engine work finished (Milestones 1 and 2, plus the party deck and result codes from Milestone 6). No screens exist yet.
 
 ## What this project is
 
@@ -24,18 +24,18 @@ Last updated: end of Milestones 1 and 2 (engine built, reviewed and tested).
 | Phase 1: design docs | Done |
 | M0 Scaffold | Done |
 | M1 Case engine and solver | Done and reviewed. 1,000 seeds per difficulty: 100% unique, 100% deterministic, 0% fallback. The reviewer's independent brute-force solver agreed with `solver.ts` on 6,000 cases |
-| M2 Engine tests | Done except task 2.5 (hand-built solver edge cases). 93 tests pass |
+| M2 Engine tests | Done except task 2.5 (hand-built solver edge cases). 103 tests pass |
 | M3 Single-player loop | Not started |
 | M4 Content | Not started |
 | M5 Save, offline, install | Not started |
-| M6 Multiplayer | Not started |
+| M6 Multiplayer | Engine side done: party deck, party reducer and scoring, result codes, all tested. Screens (6.1, 6.2 UI, 6.5) not started |
 | M7 Polish | Not started |
 
 ## Who does what
 
 Subagents are defined in `.claude/agents/` at the repository root: `implementer` and `ui-builder` (sonnet), `test-writer`, `content-writer` and `explorer` (haiku), `reviewer` (opus). `tasks.md` tags every task with one of them or with "lead".
 
-"Lead" work is the engine, the solver, the schema and the scenario facts. It was done on the strongest model available. Remaining lead tasks are 6.2 (result codes) and 6.3 (party deck). If you are continuing on Opus or Sonnet, do those yourself rather than delegating, and keep `npm run verify` and the worked-example tests green.
+"Lead" work is the engine, the solver, the schema and the scenario facts. It was done on the strongest model available. No lead tasks remain: everything left is screens, text, saving and deployment, all of which build on the engine without changing it. If the engine ever does need to change, keep `npm run verify` and the worked-example tests green.
 
 ## The riskiest areas
 

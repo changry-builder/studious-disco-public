@@ -83,9 +83,9 @@ Done when: 4.2 passes and 4.3 finds no text that carries or contradicts a fact.
 ## M6. Multiplayer
 
 - [ ] **6.1 Enter a code, share a code** — `ui-builder`. Uses `decodeCaseCode` errors for messages.
-- [ ] **6.2 Result codes** — lead designs the encoding in `engine/code.ts` and adds it to `case-engine.md`; `ui-builder` builds the result card with hidden answers and the Compare screen.
-- [ ] **6.3 Party engine** — lead. `engine/party.ts`: `buildDeck`, `partyReduce`, scoring per `game-design.md` 9.2. Done when: the deck for any case ends with a uniquely solvable revealed set, and scoring matches hand-worked cases.
-- [ ] **6.4 Party tests** — `test-writer`.
+- [ ] **6.2 Result codes** — the encoding is done (`encodeResultCode`, `decodeResultCode`; `case-engine.md` Section 10.1). Remaining: `ui-builder` builds the result card with hidden answers and the Compare screen.
+- [x] **6.3 Party engine** — lead. `engine/party.ts`: `buildDeck`, `partyReduce`, scoring per `game-design.md` 9.2. Done when: the deck for any case ends with a uniquely solvable revealed set, and scoring matches hand-worked cases.
+- [x] **6.4 Party tests** — done by the lead in `tests/engine/party.test.ts`.
 - [ ] **6.5 Party screens** — `ui-builder`. Players, card reveal, private voting with pass-the-phone screens, round tally, scoreboard.
 - [ ] **6.6 Review** — `reviewer`.
 

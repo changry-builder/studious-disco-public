@@ -536,6 +536,21 @@ A code carries everything needed to rebuild a case: 40 bits, written as 8 Crockf
 - Check symbol: `(sum over the 8 data symbols of (position+1) * value) mod 32`.
 - `decodeCaseCode` returns a typed error for: bad length, bad symbol, bad check, unknown scenario, reserved difficulty, and **version mismatch** ("this code was made by a different version of the game").
 
+### 10.1 Result codes
+
+A result code lets players compare results across phones with no network. It is the case code followed by 8 more symbols, shown `XXXX-XXXXX-XXXX-XXXX` (17 symbols).
+
+| Field | Bits | Notes |
+|---|---|---|
+| `solved` | 1 | |
+| `base` | 10 | score before the difficulty multiplier, 0..1000 |
+| `minutes` | 7 | whole minutes played, capped at 127 |
+| `questions` | 6 | capped at 63 |
+| `wrongAccusations` | 4 | capped at 15 |
+| `failedPresses` | 4 | capped at 15 |
+
+Those 32 bits are written as 7 symbols. The 8th is a check symbol computed over all 16 preceding symbols (the case code included), so a result cannot be moved onto another case. The player's name and the answers they gave are not in the code: the host types the name, and answers are compared by looking at each other's result cards. `encodeResultCode` and `decodeResultCode` are in `code.ts`.
+
 ## 11. Worked examples
 
 Both use scenario 01 (`scenario-01.md`). Slots: S0 9:00, S1 9:30, S2 10:00, S3 10:30, S4 11:00, S5 11:30.
@@ -632,5 +647,32 @@ What the player experiences: Finch's drawing-room story collapses against two wi
 - `with` lists are sorted in scenario order so equal claims compare equal.
 - The solver must enumerate `secretOpen(Y, ts)` even when the real case has no second liar. The player cannot know there is none.
 - If `tod` is not in a partial KB, the window is `[1, T-2]`.
+
+## 13. Party mode
+
+`party.ts` holds the deck and the voting rules. Player-facing rules are in `game-design.md` Section 9.2.
+
+### 13.1 The deck
+
+`buildDeck(scenario, case)` returns the cards in a fixed order:
+
+1. **scene**: the wound and the time-of-death window.
+2. **papers**: every motive document and bond document.
+3. **statements**: everyone's first statement for the slots outside the time-of-death window.
+4. **objects**: every weapon item, presence record and secret trace.
+5. **statements**: one card per slot in the window.
+6. **crack**: one card per lie withdrawn, in the order the closure reaches them. Each names the evidence that broke the claim (`brokenBy`, always already on the table) and reveals the new claim.
+
+If that is more than 8 cards, statement cards are merged from the front until it fits. Decks have 6 to 8 cards.
+
+Guarantees, all tested: every item and every claim version appears on exactly one card; a crack card's evidence was revealed earlier; after the last card the table equals the full closure, so the case is uniquely solvable. Earlier rounds are **not** guaranteed solvable. They are for arguing and guessing, which is the point of the scoring rule. The deck never needs the solver on a partial table, so the partial-notebook caveat in Section 5.5 does not arise.
+
+### 13.2 Voting
+
+`partyReduce(state, action)` is a pure reducer like the solo one. Actions: `addPlayer`, `removePlayer` (both only between cases), `startCase { code, rounds }` (needs 2 to 8 players), `vote { player, suspect }` (may be changed until the round advances), `nextRound` (only when everyone has voted), `endCase { killer }` (only after the last round's votes; adds points to totals), `abandonCase`.
+
+- The UI gets the killer for `endCase` from `partyReveal(case, state)`, which returns null until every player has voted in the last round.
+- `partyPoints(votes, killer)`: find the first round from which the player voted for the killer and never changed away. With `R` rounds counted from 0, locking in at round `r` scores `round(100 × (R − r) / R)`. Never settling scores 0.
+- `voteTally(state, round)` gives anonymous counts per suspect for display between rounds.
 
 Future extensions, deliberately left out of v1: movement rules between adjacent rooms; a moved body (which would make "where" a real deduction); weapon sightings in testimony; delayed methods such as poison; firearms (a shot would fix the time for everyone).
