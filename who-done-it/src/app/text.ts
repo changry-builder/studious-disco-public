@@ -126,7 +126,9 @@ export function claimSentence(entry: ScenarioEntry, caseSeed: number, speaker: C
   };
   const key = `char.${speaker}.claim.${alone ? "alone" : "with"}`;
   const fallback = alone ? "I was in {room} at {time}, alone." : "I was in {room} at {time}, {company}.";
-  return tOr(entry, key, fallback, vars, variantHash(caseSeed, speaker, slot));
+  // A template may open with a placeholder ("{room}, {time}. Alone."), so capitalise the result.
+  const out = tOr(entry, key, fallback, vars, variantHash(caseSeed, speaker, slot));
+  return out.charAt(0).toUpperCase() + out.slice(1);
 }
 
 /** Short title for an item card. */

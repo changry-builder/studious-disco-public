@@ -469,11 +469,11 @@ export const text: Record<string, string | string[]> = {
 
   // Motive documents: suspect-victim-type
   "motive.margaret-edmund-jealousy.title": "Letters to a London woman",
-  "motive.margaret-edmund-jealousy.text": "Letters from Lord Edmund to a woman in London, warm and frequent. In them he plans to leave his wife for her. A wife who learned of it would have cause for jealousy.",
+  "motive.margaret-edmund-jealousy.text": "Letters from Lord Edmund to a woman in London, warm and frequent. He means to leave Lady Margaret for her, and her ladyship has read every one. Jealousy, plainly.",
   "motive.julian-edmund-inheritance.title": "Draft will",
   "motive.julian-edmund-inheritance.text": "A draft of a new will, in which Lord Edmund cuts his son Julian out of the inheritance entirely.",
   "motive.julian-edmund-debt.title": "Bookmaker's demand",
-  "motive.julian-edmund-debt.text": "A bookmaker's demand for an unpaid debt. Lord Edmund refused to pay it, and the bookmaker is losing patience. Debt of this kind does not wait.",
+  "motive.julian-edmund-debt.text": "A bookmaker's demand addressed to Mr Julian Blackthorn, for a sum he cannot pay. Across it, in Lord Edmund's hand: 'Not one penny.' The bookmaker is losing patience. Debt, plainly.",
   "motive.beatrice-edmund-revenge.title": "Cheque stub",
   "motive.beatrice-edmund-revenge.text": "A cheque stub in Lord Edmund's hand, for money paid to Miss Beatrice's fiancé to make him disappear. Revenge is the natural result of such a wrong.",
   "motive.penrose-edmund-exposure.title": "Draft complaint",
@@ -481,14 +481,14 @@ export const text: Record<string, string | string[]> = {
   "motive.violet-edmund-exposure.title": "Agency's reply",
   "motive.violet-edmund-exposure.text": "A reply from an employment agency to Lord Edmund. It shows that Miss Marsh's references were forged, and that Lord Edmund has found it out. Exposure is the danger here.",
   "motive.forsythe-edmund-debt.title": "Promissory note",
-  "motive.forsythe-edmund-debt.text": "A promissory note for a ruinous sum, falling due on New Year's Day. Colonel Forsythe has no means of meeting it. A debt that cannot be met is a debt that breaks a man.",
+  "motive.forsythe-edmund-debt.text": "A promissory note from Colonel Forsythe to Lord Edmund, for a ruinous sum, falling due on New Year's Day. The Colonel has no means of meeting it. Debt, plainly.",
   "motive.finch-edmund-revenge.title": "Notice of dismissal",
-  "motive.finch-edmund-revenge.text": "A notice dismissing Mr Finch after thirty years' service, with no pension. Thirty years is a long time to remember a thing like that. Revenge is the word for it.",
+  "motive.finch-edmund-revenge.text": "A notice in Lord Edmund's hand dismissing Mr Finch after thirty years' service, with no pension. Thirty years is a long time to remember. Revenge is the word for it.",
   "motive.finch-edmund-inheritance.title": "Cancelled codicil",
-  "motive.finch-edmund-inheritance.text": "A codicil to the will, with the legacy to Mr Finch struck through in a firm hand. The codicil was to have given him something, and now it gives him nothing. Inheritance, plainly.",
+  "motive.finch-edmund-inheritance.text": "A codicil to Lord Edmund's new will, with the legacy to Mr Finch struck through in a firm hand. The old will left him something; the new leaves him nothing. Inheritance, plainly.",
 
   "motive.edmund-penrose-blackmail.title": "Demand in Penrose's hand",
-  "motive.edmund-penrose-blackmail.text": "A demand written by Dr Penrose, concerning a child in Leeds. He knew the child's story, and he was paid to keep quiet about it. That is blackmail, in plain terms.",
+  "motive.edmund-penrose-blackmail.text": "A demand written by Dr Penrose to Lord Edmund, concerning a child in Leeds. The doctor has been paid to forget the child, and now wants more. Blackmail, in plain terms.",
   "motive.margaret-penrose-blackmail.title": "Pawn ticket",
   "motive.margaret-penrose-blackmail.text": "A pawn ticket for Lady Margaret's pearls, with a note in Dr Penrose's hand. He knew the pearls were pawned, and he used that knowledge against her. That is blackmail.",
   "motive.julian-penrose-blackmail.title": "The forged cheque",
@@ -544,8 +544,8 @@ export const text: Record<string, string | string[]> = {
   "body.wound.blunt": "The wound was to the back of the head, and the blow was heavy.",
   "body.wound.blade": "The wound was narrow and deep, made by something with an edge.",
   "body.wound.ligature": "There are marks about the neck, the width of a thin cord.",
-  "body.tod.exact": "Death came at {time}, by the doctor's reckoning.",
-  "body.tod.window": "Death came between {from} and {to}, by the doctor's reckoning.",
+  "body.tod.exact": "The police surgeon puts the death in the half-hour starting at {time}.",
+  "body.tod.window": "The police surgeon puts the death in one of the half-hours starting from {from} to {to}.",
 
   // Motive type labels
   "motiveType.inheritance": "Inheritance",
