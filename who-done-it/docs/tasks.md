@@ -40,7 +40,7 @@ All `test-writer`. Read `case-engine.md`. Tests go in `tests/engine/`. Do not ch
 - [x] **2.2 Lying rules** — for 300 generated cases per difficulty, assert from `case.truth`: every innocent claim is true and complete; the killer's only false claims are for the murder slot; at most one second liar; every lie other than a vouch is "alone in R"; every final second-liar claim is true.
 - [x] **2.3 Murder rules** — M1 to M6 hold in `case.truth` for the same cases.
 - [x] **2.4 Reachability** — every lie chain reaches its last version in the closure; every `refutedBy` entry is true evidence; every item sits in a spot that exists.
-- [ ] **2.5 Solver edge cases** — hand-built KBs: two suspects alone at the murder slot (not unique); a bonded pair vouching for each other (not cleared); an unbonded pair (cleared); missing `tod` item (window widens); a presence item in the murder room; two withdrawn claims (killer must be one of them).
+- [x] **2.5 Solver edge cases** — hand-built KBs: two suspects alone at the murder slot (not unique); a bonded pair vouching for each other (not cleared); an unbonded pair (cleared); missing `tod` item (window widens); a presence item in the murder room; two withdrawn claims (killer must be one of them).
 - [x] **2.6 Reducer** — invalid actions leave state unchanged; a failed press counts; a press with a lie as evidence fails; accusation outcomes (wrong, weak proof, solved).
 - [x] **2.7 Codes** — round trip for 1,000 random values; lowercase, `O`/`I`/`L` and hyphen handling; each error type.
 
