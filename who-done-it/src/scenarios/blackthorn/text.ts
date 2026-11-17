@@ -222,21 +222,21 @@ export const text: Record<string, string | string[]> = {
   "char.forsythe.address.violet": "Miss Marsh",
   "char.forsythe.address.finch": "Finch",
   "char.forsythe.claim.alone": [
-    "{room}, {time}, alone! Like a sentry at his post, Inspector. All very quiet.",
+    "{room}, {time}, alone! Like a sentry at his post, Inspector.",
     "I was in {room} at {time}, and alone. One gets used to it, in the army.",
-    "Alone! In {room} at {time}. Nothing to report, Inspector. Dismissed!"
+    "Alone! In {room} at {time}. Dismissed, Inspector!"
   ],
   "char.forsythe.claim.with": [
     "{room}, {time}, {company}! Like old times in the mess, Inspector. Splendid company.",
     "I was in {room} at {time}, {company}. Capital company, Inspector, capital.",
-    "In {room} at {time}, {company}. Shoulder to shoulder, as it were. Nothing to report."
+    "In {room} at {time}, {company}. Shoulder to shoulder, as it were."
   ],
   "char.forsythe.firm": [
     "I've said my piece, Inspector. Stood my ground in France, and I'm standing it now.",
     "Ask me again and you'll get the same answer, and a bit more of the regiment besides."
   ],
   "char.forsythe.crack": [
-    "Blast it, I've got my dates tangled. Scrap what I said, Inspector.",
+    "Blast it, I've got myself tangled. Scrap what I said, Inspector.",
     "No, no, that's not right at all. Strike it out, there's a good fellow."
   ],
   "char.forsythe.confess": "Right, I'll own it. I was cutting a page from the regimental history. Damned awkward, but there it is.",

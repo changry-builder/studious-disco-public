@@ -2,7 +2,7 @@
 
 Start here. If you are a new session asked to "read HANDOFF.md and continue", read this file, then the docs it points to, then do the first item under "What to do next".
 
-Last updated: end of the Fable sessions. The single-player game is playable, installable and has a deploy workflow. It has not been deployed or tried on a real phone.
+Last updated: after a Sonnet session. The pull request is merged and the Pages workflow succeeded (run 4). The game is deployed but has not been tried on a real phone. The skipped tests and reviews (2.5, 3.10, 4.2, 4.3, 5.6) are done; see "Review notes" below.
 
 ## What this project is
 
@@ -33,13 +33,21 @@ The owner is not a programmer by trade. Report in plain words, say what was and 
 | M6 Multiplayer | Engine side done and tested: party deck, party reducer and scoring, result codes. Screens not started (6.1 share/enter code is partly there: Enter a code and a Share button exist; 6.2 result card and Compare screen, 6.5 party screens) |
 | M7 Polish | Not started |
 
-145 tests pass (`npm test`). `npm run build` succeeds.
+170 tests pass (`npm test`). `npm run build` succeeds.
+
+## Review notes (Sonnet session)
+
+Reviews were done by Sonnet, not Opus. A later Opus pass over the engine-adjacent items is optional.
+
+- 3.10 screens: no component reads `truth`, `solution`, `lie` or `refutedBy`; screens read only `view(...)`, and `Result.tsx` reads the reveal, which is empty until the case is over. No leaks found.
+- 4.3 text: every motive and bond document matches the "story" column, names suspect and victim, and states no time or room; every confess line matches the errand; traces carry no time. Fixed four Forsythe lines that implied he saw nothing or mixed up times.
+- 5.6 saving and offline: saves are written after every action and bad data is quarantined; the build precaches all 16 files including the manifest and icons; the service worker is registered with the update prompt on Home. Nothing found that needs fixing, but only a real phone can show iOS behaviour.
+- Tests added: text (`tests/app/scenario-text.test.ts`), solver edge cases (`tests/engine/solver-edges.test.ts`), and click-through solves of eight medium and eight hard cases.
 
 ## What to do next, in order
 
-1. **Get it deployed and onto a phone.** The pull request from `claude/who-done-it` into the default branch must be merged by the owner. Then check the "Deploy games to Pages" workflow run. If it fails, fix it (see "Deploy" below). Then have the owner install it on an iPhone and an Android phone and play one easy case. Real-phone problems (safe areas, tap targets, the iOS home-screen icon, offline) outrank everything below.
-2. **Reviews that were skipped**, with the `reviewer` subagent (Opus): task 3.10 (screens; includes checking no component reads hidden truth), 4.3 (every motive and bond document against the "story" column in `scenario-01.md`, every statement template against the style guide's "one rule"), 5.6 (saving and offline).
-3. **Tests that were skipped**, with `test-writer`: task 4.2 (text: every key exists for every id, placeholders, limits; a throwaway version of this check passed, but it is not in the repository), task 2.5 (solver edge cases), and a click-through test that solves a **medium** and a **hard** case (the existing `tests/app/solve.test.tsx` covers easy only; medium needs the secret-keeper cracked first).
+1. **Get it onto a phone.** It is deployed (see "Deploy"). Have the owner install it on an iPhone and an Android phone and play one easy case. Real-phone problems (safe areas, tap targets, the iOS home-screen icon, offline) outrank everything below.
+2. (Done: skipped reviews and tests; see "Review notes".)
 4. **Multiplayer screens**, with `ui-builder` (Sonnet): 6.2 result card with hidden answers and the Compare screen; 6.5 party mode (players, card reveal, pass-the-phone private voting, round tally, scoreboard). The store already exposes everything: see the "API for screens" block at the top of `src/app/store.ts` (`partyDispatch`, `startPartyCase`, `endPartyCase`, `snap.party.deck`). Home currently shows Party mode as "Coming soon".
 5. **Polish** (M7): atmosphere, sound hooks, accessibility pass.
 6. **Play-testing feedback.** The difficulty table has lots of headroom. If cases feel too easy or the "presence record" repairs feel too convenient, that is an engine change: see "The riskiest areas" first.
@@ -132,7 +140,6 @@ To look at the app the way a phone would, use Playwright with a 375x812 viewport
 - The deploy workflow has never run.
 - Party mode shows "Coming soon" on Home; its screens are not built.
 - No result card or Compare screen yet; result codes exist only in the engine.
-- The click-through test covers easy cases only.
 - "Who was alone with the weapon" is a strong clue on easy (by design). Medium and hard add a decoy.
 - Repairs add a physical "presence record" in about 4 in 10 medium cases. Fair, but play-testing should judge whether it feels too convenient.
 - The difficulty multiplier shown on the Result screen is a constant in `Result.tsx`; if scoring changes, change it there too.

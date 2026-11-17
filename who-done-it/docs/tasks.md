@@ -59,7 +59,7 @@ Read `game-design.md` and `architecture.md`. The UI uses placeholder text until 
 - [x] **3.7 Notebook** — `ui-builder`. Timeline grid, Clues, Testimony, Pinned, Rules. The notebook must not highlight contradictions or mark lies.
 - [x] **3.8 Accuse and Result** — `ui-builder`. Result uses `reveal`.
 - [x] **3.9 Play-through test** — `test-writer`. A jsdom test plays the easy worked example from Home to a solved Result by clicking.
-- [ ] **3.10 Review** — `reviewer`. Includes a check that no component reads `case.truth` or `case.solution`.
+- [x] **3.10 Review** — `reviewer`. Includes a check that no component reads `case.truth` or `case.solution`.
 
 Done when: a human can play an easy case start to finish on a phone-sized screen.
 
@@ -67,7 +67,7 @@ Done when: a human can play an easy case start to finish on a phone-sized screen
 
 - [x] **4.1 Scenario 01 text** — `content-writer`. Read `content-style-guide.md` and `scenario-01.md`. Write `src/scenarios/blackthorn/text.ts` for every key in the style guide's table. Split into batches: characters; rooms and spots; weapons; motive and bond documents; briefings and body text.
 - [x] **4.2 Text tests** — `test-writer`. Every key exists for every id; no unfilled or unknown placeholders; every limit respected.
-- [ ] **4.3 Fact check** — `reviewer`. Read every motive and bond document against the "story" column, and every claim template against the "one rule".
+- [x] **4.3 Fact check** — `reviewer`. Read every motive and bond document against the "story" column, and every claim template against the "one rule".
 
 Done when: 4.2 passes and 4.3 finds no text that carries or contradicts a fact.
 
@@ -78,7 +78,7 @@ Done when: 4.2 passes and 4.3 finds no text that carries or contradicts a fact.
 - [x] **5.3 PWA** — `implementer`. `vite-plugin-pwa`, manifest, icons, update prompt on Home only. Done when: the built app loads with the network disabled after one visit, and Lighthouse reports it installable.
 - [x] **5.4 Deploy** — `implementer`. A workflow that builds and publishes `who-done-it/dist`, triggered only by changes under `who-done-it/`. Needs the owner's hosting choice first (ADR-006).
 - [x] **5.5 Install help** — `ui-builder`. Home shows install steps to a user who is not running installed.
-- [ ] **5.6 Review** — `reviewer`.
+- [x] **5.6 Review** — `reviewer`.
 
 ## M6. Multiplayer
 
