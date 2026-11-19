@@ -1,6 +1,7 @@
 # Publishes the games to GitHub Pages.
 #   /              Capital Clash: the static files at the repository root, unchanged.
 #   /who-done-it/  Who Done It?: built from who-done-it/ with Vite.
+#   /depth-chart/  Depth Chart: the static files in depth-chart/, unchanged.
 # Needs: Settings -> Pages -> Source: "GitHub Actions".
 name: Deploy games to Pages
 
@@ -29,7 +30,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: who-done-it/package-lock.json
-      - name: Test Capital Clash
+      - name: Test Capital Clash and Depth Chart
         run: npm test
       - name: Install, test and build Who Done It?
         working-directory: who-done-it
@@ -42,6 +43,7 @@ jobs:
           mkdir site
           cp -r index.html css js img site/
           cp -r who-done-it/dist site/who-done-it
+          cp -r depth-chart site/depth-chart
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
