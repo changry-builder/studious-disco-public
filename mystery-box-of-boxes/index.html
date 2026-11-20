@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Box of Boxes</title>
+<style>
+  :root{
+    --bg1:#ffe3f1; --bg2:#e0f0ff; --ink:#4a3560; --pink:#ff8fc3; --pink-d:#e86aa6;
+    --box:#ffc47a; --box-d:#f0a24f; --lid:#ff9fb8; --lid-d:#f27a9b; --mint:#8fe3c4; --card:#fffaf5;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:"Trebuchet MS","Comic Sans MS",system-ui,sans-serif; color:var(--ink);
+    background:linear-gradient(160deg,var(--bg1),var(--bg2)); overflow-x:hidden;
+    user-select:none; -webkit-user-select:none;
+  }
+  .dots{position:fixed;inset:0;background-image:radial-gradient(#fff9 2px,transparent 2px);background-size:34px 34px;pointer-events:none}
+  main{position:relative;max-width:1000px;margin:0 auto;padding:18px 20px 40px;text-align:center}
+  h1{margin:6px 0 0;font-size:clamp(28px,5vw,46px);letter-spacing:1px}
+  h1 span{color:var(--pink-d)}
+  .sub{margin:4px 0 14px;opacity:.8}
+  .controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
+  .controls label{background:#fff9;border-radius:999px;padding:6px 12px;font-size:14px;display:flex;gap:6px;align-items:center}
+  select,button{font:inherit;color:inherit}
+  select{border:2px solid var(--pink);border-radius:999px;background:#fff;padding:3px 8px}
+  button{cursor:pointer;border:0}
+  .stage{position:relative;height:340px;display:flex;justify-content:center;align-items:flex-end;touch-action:none}
+  #box{position:relative;width:220px;height:210px;cursor:grab;transform-origin:50% 100%;will-change:transform;margin-bottom:20px}
+  #box.grab{cursor:grabbing}
+  .body{position:absolute;bottom:0;left:10px;right:10px;height:140px;background:linear-gradient(var(--box),var(--box-d));border-radius:10px 10px 22px 22px;box-shadow:inset 0 -8px 0 #0001,0 14px 0 -4px #0000000d}
+  .ribbon{position:absolute;bottom:0;left:50%;width:34px;height:140px;margin-left:-17px;background:var(--lid);opacity:.9}
+  .lid{position:absolute;top:28px;left:0;right:0;height:56px;background:linear-gradient(var(--lid),var(--lid-d));border-radius:14px;box-shadow:0 6px 0 #0001;transition:transform .5s cubic-bezier(.3,1.6,.5,1)}
+  .lid::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:34px;margin-left:-17px;background:#ffd0dc}
+  .bow{position:absolute;top:-4px;left:50%;margin-left:-28px;font-size:44px;line-height:1;z-index:3}
+  .face{position:absolute;bottom:34px;left:0;right:0;z-index:2;font-size:26px;font-weight:bold;line-height:1}
+  .face small{display:block;font-size:30px;letter-spacing:22px;padding-left:22px}
+  .cheek{position:absolute;bottom:42px;width:22px;height:12px;background:#ff8fa8;opacity:.7;border-radius:50%;z-index:2}
+  #box.open .lid{transform:translate(70px,-110px) rotate(28deg)}
+  .meter{width:min(340px,80%);height:16px;background:#fff9;border-radius:999px;margin:0 auto;overflow:hidden;border:2px solid #fff}
+  .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--pink));border-radius:999px;transition:width .08s}
+  .hint{margin:8px 0 0;font-size:14px;opacity:.75;min-height:20px}
+  .btn{background:var(--pink);color:#fff;padding:10px 18px;border-radius:999px;font-weight:bold;box-shadow:0 4px 0 var(--pink-d);text-decoration:none;display:inline-block;font-size:15px}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--pink-d)}
+  .btn.alt{background:var(--mint);box-shadow:0 4px 0 #5cc4a1;color:#2c5546}
+  .btn.ghost{background:#fff;color:var(--ink);box-shadow:0 4px 0 #0002}
+  #reveal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#4a356055;z-index:20;padding:16px}
+  #reveal.show{display:flex}
+  .card{background:var(--card);border-radius:28px;max-width:480px;width:100%;padding:26px 26px 22px;box-shadow:0 20px 0 -6px #0002,0 24px 50px #4a356055;animation:pop .55s cubic-bezier(.3,1.7,.5,1);text-align:center;max-height:96vh;overflow:auto;user-select:text;-webkit-user-select:text}
+  @keyframes pop{from{transform:scale(.3) rotate(-10deg);opacity:0}to{transform:none;opacity:1}}
+  .card .big{font-size:76px;line-height:1;animation:bob 1.6s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-8px) rotate(4deg)}}
+  .card h2{margin:6px 0 2px;font-size:26px}
+  .tag{display:inline-block;background:#e9defa;border-radius:999px;padding:2px 12px;font-size:13px;margin:2px}
+  .tag.price{background:#d7f7ea}
+  .card p{margin:10px 0;line-height:1.45}
+  .inside{background:#fff;border:2px dashed #ffc2dc;border-radius:16px;padding:8px 12px;font-size:14px;text-align:left}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .fine{font-size:12px;opacity:.65;margin-top:12px}
+  .wish{margin-top:22px}
+  .wish h3{margin:0 0 8px}
+  .wish ul{list-style:none;padding:0;margin:0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .wish li{background:#fffc;border-radius:14px;padding:6px 12px;font-size:14px}
+  .wish li a{color:var(--pink-d);font-weight:bold;text-decoration:none}
+  .wish li button{background:none;margin-left:4px;opacity:.6}
+  canvas{position:fixed;inset:0;pointer-events:none;z-index:30}
+  @media (prefers-reduced-motion:reduce){.card .big{animation:none}}
+</style>
+</head>
+<body>
+<div class="dots"></div>
+<main>
+  <h1>📦 Box of <span>Boxes</span> 📦</h1>
+  <p class="sub">A mystery box full of mystery boxes. Shake it to find out which one to buy!</p>
+
+  <div class="controls">
+    <label>💰 Budget
+      <select id="budget">
+        <option value="any">Surprise me</option>
+        <option value="low">Under $15</option>
+        <option value="mid">$15 – $35</option>
+        <option value="high">$35 and up</option>
+      </select>
+    </label>
+    <label>🎁 Mood
+      <select id="cat">
+        <option value="any">Anything</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="sound" checked> 🔊 Sound</label>
+  </div>
+
+  <div class="stage" id="stage">
+    <div id="box" role="button" aria-label="Mystery box. Drag it around or press space to shake.">
+      <div class="body"><div class="ribbon"></div></div>
+      <div class="cheek" style="left:48px"></div><div class="cheek" style="right:48px"></div>
+      <div class="face" id="face"><small>• •</small>‿</div>
+      <div class="lid"><span class="bow">🎀</span></div>
+    </div>
+  </div>
+
+  <div class="meter"><i id="fill"></i></div>
+  <p class="hint" id="hint">Grab the box and wiggle it with your mouse (or mash the spacebar)!</p>
+
+  <section class="wish" id="wishWrap" hidden>
+    <h3>💖 Your wishlist</h3>
+    <ul id="wishList"></ul>
+  </section>
+</main>
+
+<div id="reveal" role="dialog" aria-modal="true"><div class="card" id="card"></div></div>
+<canvas id="confetti"></canvas>
+
+<script>
+/* ------------------------------------------------------------------
+   The boxes. Prices are rough "starting from" figures and change often:
+   always check the shop page. "url" is the maker's/shop's own site;
+   the "Compare prices" button runs a live shopping search instead.
+------------------------------------------------------------------- */
+const BOXES = [
+  {name:"Pop Mart Blind Boxes", emoji:"🧸", cat:"Collectibles", from:15, price:"~$12–$25 per figure", url:"https://www.popmart.com",
+   tagline:"Adorable designer figures — you never know which one you'll get.",
+   inside:"One sealed collectible figure from a themed series (Labubu, Skullpanda, Molly and friends). Some series hide a rare 'secret' figure!"},
+  {name:"LEGO Minifigure Blind Bags", emoji:"🧱", cat:"Collectibles", from:5, price:"~$5 per bag", url:"https://www.lego.com",
+   tagline:"The cheapest little dose of surprise on this list.",
+   inside:"One collectible minifigure with accessories. Squeeze the bag to guess which one!"},
+  {name:"Funko Mystery Minis", emoji:"🎭", cat:"Collectibles", from:10, price:"~$10–$15 each", url:"https://funko.com",
+   tagline:"Tiny pop-culture vinyl figures from your favorite franchises.",
+   inside:"A single blind-boxed mini figure, plus a chance at a rarer chase variant."},
+  {name:"Sanrio Blind Boxes", emoji:"🎀", cat:"Collectibles", from:8, price:"~$8–$15 each", url:"https://www.sanrio.com",
+   tagline:"Hello Kitty and friends in surprise form.",
+   inside:"A mini figure, charm or plush from a Sanrio character series, depending on the release."},
+  {name:"Squishmallows Mystery Squad", emoji:"🐙", cat:"Collectibles", from:15, price:"~$15–$30", url:"https://www.squishmallows.com",
+   tagline:"Marshmallow-soft friends, hidden in a mystery wrapper.",
+   inside:"A surprise Squishmallow (sizes and series vary). Pure cuddle potential."},
+  {name:"Universal Yums", emoji:"🍜", cat:"Snacks", from:15, price:"~$15–$40 / month", url:"https://www.universalyums.com",
+   tagline:"A snack trip to a different country every month.",
+   inside:"Around 6–19 snacks from one country (depending on box size), plus a fun booklet with games and trivia."},
+  {name:"Sakuraco", emoji:"🍡", cat:"Snacks", from:35, price:"~$35–$40 / month", url:"https://sakuraco.com",
+   tagline:"Traditional Japanese sweets and teas from local makers.",
+   inside:"Around 20 individually wrapped Japanese snacks and sweets, plus a cute tableware item sometimes."},
+  {name:"Tokyo Treat", emoji:"🍬", cat:"Snacks", from:30, price:"~$30–$50 / month", url:"https://tokyotreat.com",
+   tagline:"Candy, chips and drinks straight from Japan.",
+   inside:"A mix of trendy Japanese candy and snacks, often including a DIY candy kit."},
+  {name:"BarkBox", emoji:"🐶", cat:"Pets", from:25, price:"~$25–$40 / month", url:"https://www.barkbox.com",
+   tagline:"A themed box for the best boy or girl (a dog!).",
+   inside:"Two toys, two bags of treats and a chew — all themed. Tail wags are not guaranteed, but likely."},
+  {name:"Ipsy Glam Bag", emoji:"💄", cat:"Beauty", from:14, price:"~$14–$30 / month", url:"https://www.ipsy.com",
+   tagline:"Beauty goodies picked around your profile.",
+   inside:"A handful of makeup, skin and hair products in a zip-up bag."},
+  {name:"FabFitFun", emoji:"🛁", cat:"Beauty", from:50, price:"~$50–$80 / season", url:"https://fabfitfun.com",
+   tagline:"A big seasonal treat box of beauty, home and wellness finds.",
+   inside:"Several full-size lifestyle products each season, from skincare to cozy home goods."},
+  {name:"Hunt A Killer", emoji:"🕵️", cat:"Games & Books", from:30, price:"~$30–$40 / month", url:"https://www.huntakiller.com",
+   tagline:"A murder mystery you solve with real evidence in a box.",
+   inside:"Letters, photos, maps and clues that unfold a case over several boxes. Detective hat optional."},
+  {name:"OwlCrate", emoji:"🦉", cat:"Games & Books", from:30, price:"~$30–$45 / month", url:"https://www.owlcrate.com",
+   tagline:"A new young-adult book and bookish goodies every month.",
+   inside:"A hardcover YA novel plus themed goodies like art prints, pins and treats."},
+  {name:"Blind Date with a Book", emoji:"📚", cat:"Games & Books", from:10, price:"~$10–$25 (varies by shop)", url:"",
+   tagline:"A wrapped book with only a few hints on the front.",
+   inside:"A secretly wrapped book, picked by your local indie bookstore or library. Judge it by its clues, not its cover."},
+  {name:"Kawaii Box", emoji:"🌸", cat:"Stationery & Cute Stuff", from:20, price:"~$20–$30 / month", url:"https://www.kawaiibox.com",
+   tagline:"Cute Japanese-style stationery, plush and gadgets.",
+   inside:"Around 5–10 kawaii items: pens, stickers, plushies, gadgets and more."},
+  {name:"Mystery Tackle Box", emoji:"🎣", cat:"Outdoors", from:25, price:"~$25–$50 / month", url:"https://www.mysterytacklebox.com",
+   tagline:"Surprise lures and gear for the angler in your life.",
+   inside:"A selection of fishing lures and tackle, with options by fishing style."},
+  {name:"Cratejoy Marketplace", emoji:"🗃️", cat:"Anything", from:12, price:"varies — thousands of boxes", url:"https://www.cratejoy.com",
+   tagline:"The ultimate box of boxes: a marketplace of subscription boxes.",
+   inside:"Browse every flavor of surprise box in one place: crafts, coffee, tea, games, pets, plants and more."},
+];
+
+/* ---------- little helpers ---------- */
+const $ = s => document.querySelector(s);
+const box=$('#box'), fill=$('#fill'), hint=$('#hint'), face=$('#face');
+const reveal=$('#reveal'), card=$('#card');
+let wish = [];
+try{ wish = JSON.parse(localStorage.getItem('bob-wish')||'[]'); }catch(e){}
+const saveWish=()=>{ try{localStorage.setItem('bob-wish',JSON.stringify(wish));}catch(e){} };
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const searchUrl = b => 'https://www.google.com/search?tbm=shop&q='+encodeURIComponent(b.name+' mystery box');
+
+// fill the mood list
+[...new Set(BOXES.map(b=>b.cat))].forEach(c=>{
+  const o=document.createElement('option'); o.value=c; o.textContent=c; $('#cat').appendChild(o);
+});
+
+/* ---------- sound (WebAudio, tiny synth) ---------- */
+let ac=null;
+const soundOn=()=>$('#sound').checked;
+function ctx(){ if(!ac){ try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return ac; }
+function rattle(){
+  if(!soundOn()||!ctx()) return;
+  const t=ac.currentTime, n=ac.createBufferSource(), len=ac.sampleRate*0.06;
+  const buf=ac.createBuffer(1,len,ac.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+  n.buffer=buf;
+  const f=ac.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1500+Math.random()*2500; f.Q.value=2;
+  const g=ac.createGain(); g.gain.value=0.25;
+  n.connect(f).connect(g).connect(ac.destination); n.start(t);
+}
+function chime(){
+  if(!soundOn()||!ctx()) return;
+  [523.25,659.25,783.99,1046.5].forEach((fr,i)=>{
+    const o=ac.createOscillator(), g=ac.createGain(), t=ac.currentTime+i*0.09;
+    o.type='triangle'; o.frequency.value=fr;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.25,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t+0.55);
+  });
+}
+
+/* ---------- shaking ---------- */
+let energy=0, shown=0, dragging=false, last=null, offX=0, offY=0, vx=0, opened=false, lastRattle=0, cooldown=false;
+const faces=['• • ‿','• • o','> < ~','@ @ O'];
+
+function addEnergy(a){
+  if(opened||cooldown) return;
+  energy=Math.min(100,energy+a);
+  const now=performance.now();
+  if(a>1.2 && now-lastRattle>70){ rattle(); lastRattle=now; }
+  if(energy>=100) openBox();
+}
+
+box.addEventListener('pointerdown',e=>{
+  if(opened) return;
+  dragging=true; last={x:e.clientX,y:e.clientY}; box.classList.add('grab'); box.setPointerCapture(e.pointerId);
+  addEnergy(4); ctx() && ac.state==='suspended' && ac.resume();
+});
+window.addEventListener('pointermove',e=>{
+  if(!dragging) return;
+  const dx=e.clientX-last.x, dy=e.clientY-last.y; last={x:e.clientX,y:e.clientY};
+  offX=Math.max(-60,Math.min(60,offX+dx*.6)); offY=Math.max(-30,Math.min(10,offY+dy*.4));
+  vx=dx; addEnergy(Math.hypot(dx,dy)*0.12);
+});
+const release=()=>{dragging=false; box.classList.remove('grab');};
+window.addEventListener('pointerup',release); window.addEventListener('pointercancel',release);
+window.addEventListener('keydown',e=>{
+  if(e.code==='Space' && !reveal.classList.contains('show') && !/SELECT|INPUT/.test(document.activeElement.tagName)){
+    e.preventDefault(); addEnergy(6.5); vx=(Math.random()-.5)*30;
+  }
+  if(e.code==='Escape') closeReveal();
+});
+
+function frame(t){
+  // springs: box returns to centre, energy drains slowly
+  offX*=0.86; offY*=0.86; vx*=0.9;
+  if(!dragging && !opened) energy=Math.max(0,energy-0.18);
+  const jig = opened?0:Math.sin(t/38)*energy*0.07;
+  const rot = offX*0.35 + vx*0.3 + jig;
+  const sq = 1 + (energy/100)*0.04*Math.sin(t/55);
+  box.style.transform=`translate(${offX+jig*2}px,${offY}px) rotate(${rot}deg) scale(${sq})`;
+  shown += (energy-shown)*0.25; fill.style.width=shown+'%';
+  const fi = energy>85?3: energy>55?2: energy>20?1:0;
+  face.innerHTML=`<small>${faces[fi].split(' ')[0]}</small>${faces[fi].split(' ')[1]}`;
+  if(!opened){
+    hint.textContent = energy<5 ? 'Grab the box and wiggle it with your mouse (or mash the spacebar)!' :
+      energy<40 ? 'Something is rattling in there… 👀' : energy<75 ? 'Keep going, it sounds fancy! ✨' : 'Almost there!!! 🎉';
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- picking + revealing ---------- */
+let lastPick=null;
+function pick(){
+  const bud=$('#budget').value, cat=$('#cat').value;
+  let pool=BOXES.filter(b=>
+    (cat==='any'||b.cat===cat) &&
+    (bud==='any'|| (bud==='low'&&b.from<15) || (bud==='mid'&&b.from>=15&&b.from<=35) || (bud==='high'&&b.from>35)));
+  if(!pool.length) return null;
+  if(pool.length>1) pool=pool.filter(b=>b!==lastPick);
+  return lastPick=pool[Math.floor(Math.random()*pool.length)];
+}
+
+function openBox(){
+  opened=true; dragging=false; box.classList.remove('grab'); box.classList.add('open');
+  chime(); burst();
+  const b=pick();
+  setTimeout(()=>{ b?showCard(b):showEmpty(); },750);
+}
+
+function showEmpty(){
+  card.innerHTML=`<div class="big">🫥</div><h2>The box is empty!</h2>
+   <p>No boxes match that budget + mood combo. Try loosening a filter and shake again.</p>
+   <div class="row"><button class="btn" id="again">Shake again 📦</button></div>`;
+  reveal.classList.add('show'); $('#again').onclick=closeReveal;
+}
+
+function showCard(b){
+  const saved = wish.includes(b.name);
+  card.innerHTML=`
+    <div class="big">${b.emoji}</div>
+    <div style="font-size:13px;opacity:.6;margin-top:6px">Your mystery box is…</div>
+    <h2>${esc(b.name)}</h2>
+    <span class="tag">${esc(b.cat)}</span><span class="tag price">${esc(b.price)}</span>
+    <p>${esc(b.tagline)}</p>
+    <div class="inside"><b>What's inside?</b><br>${esc(b.inside)}</div>
+    <div class="row">
+      ${b.url?`<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(b.url)}">Visit shop 🛒</a>`:''}
+      <a class="btn alt" target="_blank" rel="noopener noreferrer" href="${esc(searchUrl(b))}">Compare prices 🔍</a>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" id="save">${saved?'💖 Saved':'🤍 Save to wishlist'}</button>
+      <button class="btn ghost" id="again">Shake again 📦</button>
+    </div>
+    <div class="fine">Prices are rough estimates and change often — check the shop for today's price, shipping and cancellation terms.</div>`;
+  reveal.classList.add('show');
+  $('#again').onclick=closeReveal;
+  $('#save').onclick=()=>{
+    if(wish.includes(b.name)) wish=wish.filter(n=>n!==b.name); else wish.push(b.name);
+    saveWish(); renderWish(); $('#save').textContent = wish.includes(b.name)?'💖 Saved':'🤍 Save to wishlist';
+  };
+}
+
+function closeReveal(){
+  reveal.classList.remove('show'); box.classList.remove('open');
+  opened=false; energy=0; shown=0; offX=offY=vx=0;
+  cooldown=true; setTimeout(()=>cooldown=false,300);
+}
+reveal.addEventListener('pointerdown',e=>{ if(e.target===reveal) closeReveal(); });
+
+function renderWish(){
+  $('#wishWrap').hidden = !wish.length;
+  $('#wishList').innerHTML = wish.map(n=>{
+    const b=BOXES.find(x=>x.name===n); if(!b) return '';
+    return `<li>${b.emoji} <a target="_blank" rel="noopener noreferrer" href="${esc(b.url||searchUrl(b))}">${esc(b.name)}</a> <button data-n="${esc(n)}" title="Remove">✕</button></li>`;
+  }).join('');
+  document.querySelectorAll('#wishList button').forEach(btn=>btn.onclick=()=>{
+    wish=wish.filter(n=>n!==btn.dataset.n); saveWish(); renderWish();
+  });
+}
+renderWish();
+
+/* ---------- confetti ---------- */
+const cv=$('#confetti'), cx=cv.getContext('2d'); let bits=[];
+function size(){cv.width=innerWidth;cv.height=innerHeight} size(); addEventListener('resize',size);
+function burst(){
+  const r=box.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+30;
+  const cols=['#ff8fc3','#8fe3c4','#ffc47a','#b79cff','#7fd0ff','#fff2a0'];
+  for(let i=0;i<110;i++){
+    const a=Math.random()*Math.PI*2, s=4+Math.random()*9;
+    bits.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-6,r:Math.random()*6,w:5+Math.random()*6,c:cols[i%cols.length],life:100+Math.random()*60});
+  }
+}
+(function loop(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  bits=bits.filter(p=>p.life>0);
+  for(const p of bits){
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.28; p.vx*=0.99; p.r+=0.2; p.life--;
+    cx.save(); cx.translate(p.x,p.y); cx.rotate(p.r); cx.fillStyle=p.c; cx.globalAlpha=Math.min(1,p.life/40);
+    cx.fillRect(-p.w/2,-p.w/4,p.w,p.w/2); cx.restore();
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
