@@ -4,7 +4,8 @@
  *   control     last season under team control (pre-arb/arbitration), when longer than the deal
  *   options     seasons that are club options
  *   optOuts     seasons after which the player may opt out
- *   roster      "26" (active), "40" (40-man, optioned), "IL" (injured list)
+ *   roster      "26" (active) or "40" (40-man, optioned)
+ *   il          seasons the player opens on the injured list
  * Each player is listed once, at their primary position (pos[0]); the first at each position starts.
  * Never rename a player id: saved edits refer to players by id.
  * `verify: true` marks details gathered from secondary sources that still need checking.
@@ -52,7 +53,7 @@
       P("benge", "Carson Benge", ["RF", "CF"], { bats: "L", control: 2031 }),
       P("taylor", "Tyrone Taylor", ["CF", "LF", "RF"], { num: 15, bats: "R", control: 2026 }),
       // Injured list
-      P("minter", "A.J. Minter", ["RP"], { throws: "L", guaranteed: 2026, roster: "IL", note: "15-day IL to open 2026" }),
+      P("minter", "A.J. Minter", ["RP"], { throws: "L", guaranteed: 2026, il: [2026], note: "15-day IL to open 2026" }),
       // 40-man, optioned to the minors in March 2026
       P("tong", "Jonah Tong", ["SP"], { throws: "R", control: 2031, roster: "40" }),
       P("scott", "Christian Scott", ["SP"], { throws: "R", control: 2030, roster: "40" }),

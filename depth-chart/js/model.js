@@ -31,14 +31,16 @@
    *   - never rename or reuse a player id (tests/depth-chart.test.js pins the current ones);
    *   - when the saved shape has to change, bump SCHEMA and add a step to MIGRATIONS; never drop data.
    */
-  const SCHEMA = 1;
+  const SCHEMA = 2;
   const MIGRATIONS = {
     // 0 -> 1: the first release saved the same fields without a version number.
     0: (s) => s,
+    // 1 -> 2: injured lists by season ({ season: [id] }). Older edits had none.
+    1: (s) => Object.assign({ il: {} }, s),
   };
 
   function emptyState() {
-    return { v: SCHEMA, added: [], edits: {}, removed: [], depth: {} };
+    return { v: SCHEMA, added: [], edits: {}, removed: [], depth: {}, il: {} };
   }
 
   /** Bring saved edits from any earlier version up to date. Unknown fields are kept. */
@@ -53,6 +55,7 @@
       edits: cur.edits && typeof cur.edits === "object" ? cur.edits : e.edits,
       removed: Array.isArray(cur.removed) ? cur.removed : e.removed,
       depth: cur.depth && typeof cur.depth === "object" ? cur.depth : e.depth,
+      il: cur.il && typeof cur.il === "object" ? cur.il : e.il,
     });
   }
 
@@ -138,19 +141,53 @@
       if (hand) lines.push(hand);
     }
     if (p.note) lines.push(p.note);
-    if (p.prospect) lines.push(team.sport === "basketball" ? "Prospective recruit / transfer" : "Prospective signing");
     if (p.verify) lines.push("Details still to be verified");
     return lines;
   }
 
-  /** Roster filter for baseball: "26" active only, "40" whole 40-man (plus IL). */
+  /** Roster filter for baseball: "26" active roster only, "40" the whole 40-man. */
   function inRosterView(team, p, view) {
     if (team.sport !== "baseball" || view !== "26") return true;
-    return (p.roster || "26") === "26";
+    // "IL" was a roster level before injuries were tracked by season; those players belong to the 26.
+    return (p.roster || "26") !== "40";
   }
 
-  function playersFor(team, state, season, view) {
+  /**
+   * Ids on the injured list in a season. Saved per season; otherwise the data's `il: [seasons]`
+   * (and the older `roster: "IL"`, which meant the opening season).
+   */
+  function injuredIds(team, state, season) {
+    const saved = (state.il || {})[season];
+    if (Array.isArray(saved)) return new Set(saved);
+    return new Set(
+      allPlayers(team, state)
+        .filter((p) => (p.il || []).includes(season) || (p.roster === "IL" && season === firstSeason(team, p)))
+        .map((p) => p.id)
+    );
+  }
+
+  function setInjured(team, state, season, id, on) {
+    const cur = injuredIds(team, state, season);
+    if (on) cur.add(id);
+    else cur.delete(id);
+    return Object.assign({}, state, { il: Object.assign({}, state.il || {}, { [season]: [...cur] }) });
+  }
+
+  /** On the team that season, in the roster view, injured or not. */
+  function onTeamFor(team, state, season, view) {
     return allPlayers(team, state).filter((p) => isOnTeam(team, p, season) && inRosterView(team, p, view));
+  }
+
+  /** Healthy players: the ones who count against the roster limit and appear on the field. */
+  function playersFor(team, state, season, view) {
+    const hurt = injuredIds(team, state, season);
+    return onTeamFor(team, state, season, view).filter((p) => !hurt.has(p.id));
+  }
+
+  /** Players on the injured list that season (any roster level). */
+  function injuredFor(team, state, season) {
+    const hurt = injuredIds(team, state, season);
+    return onTeamFor(team, state, season, "all").filter((p) => hurt.has(p.id));
   }
 
   function seedDepth(team) {
@@ -169,44 +206,68 @@
   }
 
   /**
-   * Depth chart as shown: every player on the team that season (and in the roster view) appears at exactly
-   * one position. Saved depth wins; a player listed twice keeps their primary position; anyone not yet
-   * listed goes to the bottom of their primary position.
+   * Saved placements for a season, one position per player: a player listed twice keeps their primary
+   * position (else their first listing). Includes players hidden from the current view, injured or gone,
+   * so they keep their places.
    */
-  function depthFor(team, state, season, view) {
-    const players = playersFor(team, state, season, view);
-    const ok = new Set(players.map((p) => p.id));
+  function placedDepth(team, state, season) {
     const raw = rawDepth(team, state, season);
-    const d = {};
-    for (const pos of Object.keys(raw)) d[pos] = raw[pos].filter((id) => ok.has(id));
-    // One position each: keep the player's primary position if listed there, else their first listing.
-    const byId = new Map(players.map((p) => [p.id, p]));
+    const byId = new Map(allPlayers(team, state).map((p) => [p.id, p]));
     const keep = new Map();
-    for (const pos of Object.keys(d)) {
-      for (const id of d[pos]) {
-        const primary = byId.get(id).pos[0];
+    for (const pos of Object.keys(raw)) {
+      for (const id of raw[pos]) {
+        const p = byId.get(id);
+        const primary = p ? p.pos[0] : null;
         if (!keep.has(id) || (pos === primary && keep.get(id) !== primary)) keep.set(id, pos);
       }
     }
-    for (const pos of Object.keys(d)) d[pos] = d[pos].filter((id) => keep.get(id) === pos);
-    // Everyone not yet placed goes to the bottom of their primary position.
-    for (const p of players) {
-      if (keep.has(p.id)) continue;
-      const pos = d[p.pos[0]] ? p.pos[0] : Object.keys(d)[0];
-      d[pos].push(p.id);
-    }
+    const d = {};
+    for (const pos of Object.keys(raw)) d[pos] = raw[pos].filter((id, i, list) => keep.get(id) === pos && list.indexOf(id) === i);
     return d;
   }
 
   /**
-   * Move or add a player in a season's depth chart. Returns a new state.
+   * Depth chart as shown, plus who still needs placing. Every healthy player on the team that season (and
+   * in the roster view) appears once. Players with no saved place (new signings, recruits) go to the bottom
+   * of their primary position and are listed in `unplaced` until they're moved or kept there.
+   */
+  function layoutFor(team, state, season, view) {
+    const players = playersFor(team, state, season, view);
+    const ok = new Set(players.map((p) => p.id));
+    const placed = placedDepth(team, state, season);
+    const d = {};
+    const seen = new Set();
+    for (const pos of Object.keys(placed)) {
+      d[pos] = placed[pos].filter((id) => ok.has(id));
+      d[pos].forEach((id) => seen.add(id));
+    }
+    const unplaced = new Set();
+    for (const p of players) {
+      if (seen.has(p.id)) continue;
+      const pos = d[p.pos[0]] ? p.pos[0] : Object.keys(d)[0];
+      d[pos].push(p.id);
+      unplaced.add(p.id);
+    }
+    return { depth: d, unplaced };
+  }
+
+  function depthFor(team, state, season, view) {
+    return layoutFor(team, state, season, view).depth;
+  }
+
+  function unplacedFor(team, state, season, view) {
+    return layoutFor(team, state, season, view).unplaced;
+  }
+
+  /**
+   * Move a player in a season's depth chart (which also places them if they weren't). Returns a new state.
    *   to:   destination position (players can't be taken off the field, only moved)
    *   beforeId: place ahead of this player in `to`, or null for the end
-   * The whole season (every roster level) is saved, so hidden 40-man players keep their places.
+   * Everyone else keeps their saved place, including players hidden from the current view.
    */
   function moveInDepth(team, state, season, { id, to, beforeId = null }) {
     if (!to) return state;
-    const d = depthFor(team, state, season, "all");
+    const d = placedDepth(team, state, season);
     if (!d[to]) return state;
     for (const pos of Object.keys(d)) d[pos] = d[pos].filter((x) => x !== id);
     const i = beforeId ? d[to].indexOf(beforeId) : -1;
@@ -234,13 +295,9 @@
     const taken = new Set(allPlayers(team, state).map((p) => p.id).concat(team.players.map((p) => p.id)));
     let id = "new-" + slug(player.name);
     for (let n = 2; taken.has(id); n++) id = `new-${slug(player.name)}-${n}`;
-    const p = Object.assign({ prospect: true }, player, { id });
-    let next = Object.assign({}, state, { added: state.added.concat([p]) });
-    const pos = (p.pos || [])[0];
-    if (pos && POSITIONS[team.sport].includes(pos)) {
-      next = moveInDepth(team, next, season, { id, to: pos });
-    }
-    return { state: next, id };
+    // Not placed yet: they show at the bottom of their primary position, outlined, until moved or kept.
+    const p = Object.assign({}, player, { id });
+    return { state: Object.assign({}, state, { added: state.added.concat([p]) }), id };
   }
 
   function editPlayer(team, state, id, fields) {
@@ -287,7 +344,8 @@
   const Model = {
     CLASS_NAMES, CLASS_SHORT, MAX_COLLEGE_YEARS, POSITIONS, POSITION_NAMES, posName,
     emptyState, normalizeState, seasonLabel, allPlayers, firstSeason, lastSeason, isOnTeam, classYear,
-    statusFor, tooltipFor, inRosterView, playersFor, seedDepth, rawDepth, depthFor, moveInDepth,
+    statusFor, tooltipFor, inRosterView, playersFor, onTeamFor, injuredIds, setInjured, injuredFor, seedDepth,
+    rawDepth, placedDepth, layoutFor, depthFor, unplacedFor, moveInDepth,
     shiftInDepth, addPlayer, editPlayer, removePlayer, slotsOf, isPitcher, starters, LINEUP, SCHEMA,
   };
   root.DC_Model = Model;

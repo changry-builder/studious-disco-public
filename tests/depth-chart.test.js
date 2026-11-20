@@ -103,6 +103,7 @@ test("saved edits from the first release still load", () => {
   const old = { added: [{ id: "new-x", name: "X", pos: ["RP"], guaranteed: 2027, prospect: true }], edits: { soto: { num: 99 } }, removed: ["raley"], depth: { 2026: { SS: ["lindor", "bichette"] } }, extra: 1 };
   const s = M.normalizeState(old);
   assert.equal(s.v, M.SCHEMA);
+  assert.deepEqual(s.il, {}, "injured lists start empty");
   assert.equal(s.extra, 1, "unknown fields are kept");
   assert.deepEqual(s.added, old.added);
   const ps = M.playersFor(METS, s, 2026, "40");
@@ -110,6 +111,30 @@ test("saved edits from the first release still load", () => {
   assert.ok(!ps.some((p) => p.id === "raley"));
   assert.ok(ps.some((p) => p.id === "new-x"));
   assert.equal(M.normalizeState(s).v, M.SCHEMA, "normalizing twice is harmless");
+});
+
+test("the injured list is per season and doesn't count against the roster", () => {
+  // Minter opens 2026 on the IL.
+  assert.ok(M.injuredIds(METS, S0, 2026).has("minter"));
+  assert.ok(!M.playersFor(METS, S0, 2026, "26").some((p) => p.id === "minter"));
+  assert.ok(!Object.values(M.depthFor(METS, S0, 2026, "40")).flat().includes("minter"));
+  let s = M.setInjured(METS, S0, 2026, "lindor", true);
+  assert.equal(M.playersFor(METS, s, 2026, "26").length, 25);
+  assert.equal(M.starters(METS, s, 2026, "40").find((x) => x.pos === "SS").id, "mauricio", "the next man up starts");
+  assert.ok(!M.depthFor(METS, s, 2026, "26").SS.includes("lindor"));
+  assert.ok(M.injuredIds(METS, s, 2027).size === 0, "an injury doesn't carry into next season");
+  // Activating returns him to his old spot, already placed.
+  s = M.setInjured(METS, s, 2026, "lindor", false);
+  assert.equal(M.depthFor(METS, s, 2026, "26").SS[0], "lindor");
+  assert.ok(!M.unplacedFor(METS, s, 2026, "26").has("lindor"));
+  // Basketball too.
+  const w = M.setInjured(WOMEN, S0, 2025, "lbetts", true);
+  assert.equal(M.playersFor(WOMEN, w, 2025).length, WOMEN.players.length - 1);
+  assert.equal(M.starters(WOMEN, w, 2025).find((x) => x.pos === "C").id, "muse");
+});
+
+test("nobody needs placing on the opening rosters", () => {
+  for (const t of TEAMS) assert.equal(M.unplacedFor(t, S0, t.baseSeason, "40").size, 0, t.id);
 });
 
 test("player ids never change, so saved edits keep pointing at the right players", () => {
@@ -131,7 +156,9 @@ test("adding a recruit places them at their position from their first season", (
   assert.ok(M.depthFor(MEN, state, 2026).SF.includes(id));
   const p = M.allPlayers(MEN, state).find((x) => x.id === id);
   assert.equal(M.lastSeason(MEN, p), 2030);
-  assert.ok(p.prospect);
+  assert.ok(M.unplacedFor(MEN, state, 2026).has(id), "a new recruit needs placing");
+  const placed = M.moveInDepth(MEN, state, 2026, { id, to: "SF" });
+  assert.ok(!M.unplacedFor(MEN, placed, 2026).has(id), "keeping them there places them");
   assert.equal(M.removePlayer(MEN, state, id).added.length, 0);
 });
 
