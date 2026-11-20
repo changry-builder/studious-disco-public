@@ -35,10 +35,11 @@
   };
 
   const ui = Object.assign(
-    { sport: "baseball", team: { baseball: "mets", basketball: "ucla-m" }, season: {}, view: "26", expanded: {} },
+    { sport: "baseball", team: { baseball: "mets", basketball: "ucla-m" }, season: {}, view: "26", expanded: {}, tableOnly: {}, lineupHidden: false },
     store.get("dc.ui", {})
   );
   ui.expanded = ui.expanded || {};
+  ui.tableOnly = ui.tableOnly || {};
   const states = {};
 
   function team() {
@@ -90,6 +91,7 @@
   // ---------- render ----------
   function render() {
     const t = team();
+    $("main").className = `layout sport-${t.sport}`;
     renderControls(t);
     renderField(t);
     renderRoster(t);
@@ -143,7 +145,7 @@
     const slots = Object.entries(layout.slots)
       .map(([pos, [x, y]]) => slotHTML(t, s, pos, depth[pos], { x, y }))
       .join("");
-    field.innerHTML = `<div class="turf">${layout.svg}</div><div class="slots">${slots}</div>`;
+    field.innerHTML = `<div class="turf">${layout.svg}</div>${t.sport === "basketball" ? lineupHTML(t, s) : ""}<div class="slots">${slots}</div>`;
 
     const side = $("#side");
     if (layout.side) {
@@ -155,6 +157,26 @@
       side.hidden = true;
       side.innerHTML = "";
     }
+  }
+
+  function lineupHTML(t, s) {
+    const st = stateOf(t);
+    if (ui.lineupHidden) {
+      return `<aside class="lineup collapsed"><button type="button" class="lineup-toggle" data-lineup aria-expanded="false">Starting Lineup ▸</button></aside>`;
+    }
+    const rows = M.starters(t, st, s, view(t))
+      .map(({ pos, id }) => {
+        const p = id && playerById(t, id);
+        if (!p) return `<li><b>${esc(pos)}</b><span class="muted">Open</span></li>`;
+        return `<li><b>${esc(pos)}</b><button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${
+          p.num != null && p.num !== "" ? `<i>#${esc(p.num)}</i> ` : ""
+        }${esc(p.name)}</button><span class="chip">${esc(chipText(t, p, s))}</span></li>`;
+      })
+      .join("");
+    return `<aside class="lineup" aria-label="Starting lineup">
+      <header><h3>Starting Lineup</h3><button type="button" class="lineup-toggle" data-lineup aria-expanded="true" title="Hide">▾</button></header>
+      <ol>${rows}</ol>
+    </aside>`;
   }
 
   function slotHTML(t, s, pos, ids, at) {
@@ -175,7 +197,11 @@
           <span class="tools">
             <button type="button" data-act="up" title="Move up" aria-label="Move ${esc(p.name)} up">▲</button>
             <button type="button" data-act="down" title="Move down" aria-label="Move ${esc(p.name)} down">▼</button>
-            <button type="button" data-act="drop" title="Remove from ${esc(pos)}" aria-label="Remove ${esc(p.name)} from ${esc(pos)}">✕</button>
+            ${
+              M.isExclusive(t)
+                ? ""
+                : `<button type="button" data-act="drop" title="Remove from ${esc(pos)}" aria-label="Remove ${esc(p.name)} from ${esc(pos)}">✕</button>`
+            }
           </span>
         </li>`;
       })
@@ -192,7 +218,7 @@
     </section>`;
   }
 
-  function groupsFor(t, players) {
+  function groupsFor(t, players, { centersAsForwards = false } = {}) {
     if (t.sport === "baseball") {
       return [
         ["Position players", players.filter((p) => !M.isPitcher(p))],
@@ -200,6 +226,12 @@
       ];
     }
     const g = (pre) => players.filter((p) => (p.pos[0] || "").endsWith(pre));
+    if (centersAsForwards) {
+      return [
+        ["Guards", g("G")],
+        ["Forwards", players.filter((p) => !(p.pos[0] || "").endsWith("G"))],
+      ];
+    }
     return [
       ["Guards", g("G")],
       ["Forwards", g("F")],
@@ -213,10 +245,12 @@
     const players = M.playersFor(t, st, s, view(t));
     const depth = M.depthFor(t, st, s, view(t));
     $("#roster").innerHTML =
-      `<h3>Roster <span>${esc(M.seasonLabel(t, s))}</span></h3><p class="hint">Drag onto the ${
-        t.sport === "baseball" ? "field" : "court"
-      } to add to a position. Drag here to take a player off a position.</p>` +
-      groupsFor(t, players)
+      `<h3>Roster <span>${esc(M.seasonLabel(t, s))}</span></h3><p class="hint">${
+        t.sport === "baseball"
+          ? "Drag onto the field to add to a position. Drag here to take a player off a position."
+          : "Everyone plays their primary position. Drag a player to another spot on the court to move them."
+      }</p>` +
+      groupsFor(t, players, { centersAsForwards: t.sport === "basketball" })
         .filter(([, list]) => list.length)
         .map(
           ([title, list]) => `<h4>${esc(title)} <span>${list.length}</span></h4><ul>${list
@@ -238,16 +272,28 @@
   function renderTable(t) {
     const s = season(t);
     const st = stateOf(t);
-    const players = M.allPlayers(t, st).filter((p) => M.inRosterView(t, p, view(t)) && t.seasons.some((y) => M.isOnTeam(t, p, y)));
-    const head = t.seasons.map((y) => `<th class="${y === s ? "cur" : ""}" scope="col">${esc(M.seasonLabel(t, y))}</th>`).join("");
+    const only = !!ui.tableOnly[t.id];
+    const players = M.allPlayers(t, st).filter(
+      (p) => M.inRosterView(t, p, view(t)) && (only ? M.isOnTeam(t, p, s) : t.seasons.some((y) => M.isOnTeam(t, p, y)))
+    );
+    const cols = t.seasons.length + 3;
+    const head = t.seasons
+      .map(
+        (y) =>
+          `<th class="${y === s ? "cur" : ""}" scope="col"><button type="button" class="yr" data-tyear="${y}" aria-pressed="${only && y === s}" title="Show only players on the team in ${esc(
+            M.seasonLabel(t, y)
+          )}">${esc(M.seasonLabel(t, y))}</button></th>`
+      )
+      .join("");
     const rows = groupsFor(t, players)
       .filter(([, list]) => list.length)
       .map(
         ([title, list]) =>
-          `<tr class="grp"><th colspan="${t.seasons.length + 2}" scope="rowgroup">${esc(title)}</th></tr>` +
+          `<tr class="grp"><th colspan="${cols}" scope="rowgroup">${esc(title)} <span>${list.length}</span></th></tr>` +
           list
             .map(
               (p) => `<tr>
+                <td class="num">${p.num != null && p.num !== "" ? esc(p.num) : ""}</td>
                 <th scope="row"><button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${esc(p.name)}</button>${
                   p.prospect ? ` <em class="new">new</em>` : ""
                 }</th>
@@ -267,10 +313,46 @@
       t.sport === "baseball"
         ? `<span class="st st-signed">Signed</span> guaranteed deal · <span class="st st-option">Option</span> club option · <span class="st st-arb">Arb</span> arbitration · <span class="st st-prearb">Pre-arb</span> pre-arbitration · * after an opt-out`
         : `Class by season, assuming every player stays five years.`;
+    const filterNote = only
+      ? `<p class="filter-note">Showing the ${players.length} players on the team in <b>${esc(M.seasonLabel(t, s))}</b>. <button type="button" class="link" data-tall>Show all seasons</button></p>`
+      : `<p class="filter-note muted">Click a season to see only that season's players.</p>`;
+    const posOpts = M.POSITIONS[t.sport].map((x) => `<option value="${x}">${x}</option>`).join("");
+    const extra =
+      t.sport === "basketball"
+        ? `<label class="qa-lbl">Class in ${esc(M.seasonLabel(t, s))} <select form="qa" name="year">${[1, 2, 3, 4, 5]
+            .map((y) => `<option value="${y}">${M.CLASS_NAMES[y]}</option>`)
+            .join("")}</select></label>`
+        : `<label class="qa-lbl">Signed through <select form="qa" name="guaranteed">${Array.from({ length: 12 }, (_, i) => s + i)
+            .map((y) => `<option value="${y}">${y}</option>`)
+            .join("")}</select></label>`;
+    const quick = `<tfoot><tr class="qa-row">
+        <td><input form="qa" name="num" inputmode="numeric" maxlength="3" placeholder="#" aria-label="Jersey number"></td>
+        <td><input form="qa" name="name" id="qa-name" maxlength="60" placeholder="+ Add a ${t.sport === "baseball" ? "signing" : "recruit"}…" aria-label="Player name" required autocomplete="off"></td>
+        <td><select form="qa" name="pos" aria-label="Position">${posOpts}</select></td>
+        <td colspan="${t.seasons.length}"><div class="qa-more">${extra}<span class="muted">joins in ${esc(M.seasonLabel(t, s))}</span><button type="submit" form="qa" class="btn primary">Add</button></div></td>
+      </tr></tfoot>`;
     $("#table").innerHTML = `<h3>${t.sport === "baseball" ? "Contracts &amp; team control" : "Eligibility by season"}</h3>
-      <p class="hint">${legend}</p>
-      <div class="table-scroll"><table><thead><tr><th scope="col">Player</th><th scope="col">Pos</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+      <p class="hint">${legend}</p>${filterNote}
+      <form id="qa" class="qa-form"></form>
+      <div class="table-scroll"><table><thead><tr><th scope="col" class="num">#</th><th scope="col">Player</th><th scope="col">Pos</th>${head}</tr></thead><tbody>${rows}</tbody>${quick}</table></div>`;
   }
+
+  document.addEventListener("submit", (e) => {
+    if (e.target.id !== "qa") return;
+    e.preventDefault();
+    const t = team();
+    const s = season(t);
+    const f = new FormData(e.target);
+    const name = String(f.get("name") || "").trim();
+    if (!name) return;
+    const num = String(f.get("num") || "").trim();
+    const fields = { name, num: num === "" ? null : num, pos: [f.get("pos")], firstSeason: s };
+    if (t.sport === "basketball") fields.year = Number(f.get("year"));
+    else Object.assign(fields, { guaranteed: Number(f.get("guaranteed")), roster: "26" });
+    setState(t, M.addPlayer(t, stateOf(t), fields, s).state);
+    const input = $("#qa-name");
+    if (input) input.focus();
+  });
 
   // ---------- tooltip ----------
   const tip = $("#tip");
@@ -318,6 +400,21 @@
       if (name === "view") ui.view = value;
       if (name === "season") ui.season[t.id] = Number(value);
       hideTip();
+      return render();
+    }
+    const yr = e.target.closest("[data-tyear]");
+    if (yr) {
+      const y = Number(yr.dataset.tyear);
+      ui.tableOnly[t.id] = !(ui.tableOnly[t.id] && season(t) === y);
+      ui.season[t.id] = y;
+      return render();
+    }
+    if (e.target.closest("[data-tall]")) {
+      ui.tableOnly[t.id] = false;
+      return render();
+    }
+    if (e.target.closest("[data-lineup]")) {
+      ui.lineupHidden = !ui.lineupHidden;
       return render();
     }
     const exp = e.target.closest("[data-expand]");
@@ -392,7 +489,7 @@
     if (!drag) return;
     const pt = dropPoint(e);
     const roster = e.target.closest("#roster");
-    if (!pt && !(roster && drag.from)) return;
+    if (!pt && !(roster && drag.from && !M.isExclusive(team()))) return;
     e.preventDefault();
     clearMarks();
     if (pt) {
@@ -409,7 +506,7 @@
     const st = stateOf(t);
     const s = season(t);
     if (pt) setState(t, M.moveInDepth(t, st, s, { id: drag.id, from: drag.from, to: pt.pos, beforeId: pt.beforeId }));
-    else if (e.target.closest("#roster") && drag.from) setState(t, M.moveInDepth(t, st, s, { id: drag.id, from: drag.from, to: null }));
+    else if (e.target.closest("#roster") && drag.from && !M.isExclusive(t)) setState(t, M.moveInDepth(t, st, s, { id: drag.id, from: drag.from, to: null }));
     drag = null;
   });
 
@@ -457,17 +554,19 @@
                 ? slots
                     .map(
                       (x) =>
-                        `<li><b>${esc(x.pos)}</b> #${x.rank} on the depth chart <button type="button" class="link" data-unslot="${esc(x.pos)}">Remove</button></li>`
+                        `<li><b>${esc(x.pos)}</b> #${x.rank} on the depth chart${
+                          M.isExclusive(t) ? "" : ` <button type="button" class="link" data-unslot="${esc(x.pos)}">Remove</button>`
+                        }</li>`
                     )
                     .join("")
                 : `<li class="muted">Not at any position.</li>`
             }</ul>
             <div class="row">
-              <label>Add at <select id="add-pos">${positions
-                .map((x) => `<option value="${x}"${x === p.pos[0] ? " selected" : ""}>${x} — ${esc(M.posName(t, x))}</option>`)
+              <label>${M.isExclusive(t) ? "Move to" : "Add at"} <select id="add-pos">${positions
+                .map((x) => `<option value="${x}"${x === (M.isExclusive(t) && slots[0] ? slots[0].pos : p.pos[0]) ? " selected" : ""}>${x} — ${esc(M.posName(t, x))}</option>`)
                 .join("")}</select></label>
               <label>Place <select id="add-rank"><option value="top">Top (starter)</option><option value="end" selected>Bottom</option></select></label>
-              <button type="button" id="do-slot" class="btn">Add</button>
+              <button type="button" id="do-slot" class="btn">${M.isExclusive(t) ? "Move" : "Add"}</button>
             </div>`
           : `<p class="muted">Not on the team in ${esc(M.seasonLabel(t, s))}.</p>`
       }
@@ -499,7 +598,7 @@
       doSlot.addEventListener("click", () => {
         const pos = $("#add-pos", body).value;
         const top = $("#add-rank", body).value === "top";
-        const raw = M.rawDepth(t, stateOf(t), s)[pos].filter((x) => x !== id);
+        const raw = M.depthFor(t, stateOf(t), s, "all")[pos].filter((x) => x !== id);
         setState(t, M.moveInDepth(t, stateOf(t), s, { id, from: null, to: pos, beforeId: top ? raw[0] || null : null }));
         openPlayer(id);
       });

@@ -151,12 +151,35 @@
     return d;
   }
 
+  /** Basketball keeps each player at exactly one position. */
+  function isExclusive(team) {
+    return team.sport === "basketball";
+  }
+
   /** Depth chart as shown: ids filtered to players on the team (and in the roster view) that season. */
   function depthFor(team, state, season, view) {
-    const ok = new Set(playersFor(team, state, season, view).map((p) => p.id));
+    const players = playersFor(team, state, season, view);
+    const ok = new Set(players.map((p) => p.id));
     const raw = rawDepth(team, state, season);
     const d = {};
     for (const pos of Object.keys(raw)) d[pos] = raw[pos].filter((id) => ok.has(id));
+    if (!isExclusive(team)) return d;
+    // One position each: keep the player's primary position if listed there, else their first listing.
+    const byId = new Map(players.map((p) => [p.id, p]));
+    const keep = new Map();
+    for (const pos of Object.keys(d)) {
+      for (const id of d[pos]) {
+        const primary = byId.get(id).pos[0];
+        if (!keep.has(id) || (pos === primary && keep.get(id) !== primary)) keep.set(id, pos);
+      }
+    }
+    for (const pos of Object.keys(d)) d[pos] = d[pos].filter((id) => keep.get(id) === pos);
+    // Everyone not yet placed goes to the bottom of their primary position.
+    for (const p of players) {
+      if (keep.has(p.id)) continue;
+      const pos = d[p.pos[0]] ? p.pos[0] : Object.keys(d)[0];
+      d[pos].push(p.id);
+    }
     return d;
   }
 
@@ -167,7 +190,11 @@
    *   beforeId: place ahead of this player in `to`, or null for the end
    */
   function moveInDepth(team, state, season, { id, from, to, beforeId = null }) {
-    const d = rawDepth(team, state, season);
+    const exclusive = isExclusive(team);
+    // Basketball players can't be taken off the court, only moved to another position.
+    if (exclusive && !to) return state;
+    const d = exclusive ? depthFor(team, state, season, "all") : rawDepth(team, state, season);
+    if (exclusive) for (const pos of Object.keys(d)) d[pos] = d[pos].filter((x) => x !== id);
     if (from && d[from]) d[from] = d[from].filter((x) => x !== id);
     if (to && d[to]) {
       d[to] = d[to].filter((x) => x !== id);
@@ -231,6 +258,12 @@
     return out;
   }
 
+  /** The first player at each position (basketball: the starting five). */
+  function starters(team, state, season, view) {
+    const d = depthFor(team, state, season, view);
+    return POSITIONS[team.sport].map((pos) => ({ pos, id: (d[pos] || [])[0] || null }));
+  }
+
   function isPitcher(p) {
     return (p.pos || []).some((x) => PITCHER_POS.has(x));
   }
@@ -239,7 +272,7 @@
     CLASS_NAMES, CLASS_SHORT, MAX_COLLEGE_YEARS, POSITIONS, POSITION_NAMES, posName,
     emptyState, normalizeState, seasonLabel, allPlayers, firstSeason, lastSeason, isOnTeam, classYear,
     statusFor, tooltipFor, inRosterView, playersFor, seedDepth, rawDepth, depthFor, moveInDepth,
-    shiftInDepth, addPlayer, editPlayer, removePlayer, slotsOf, isPitcher,
+    shiftInDepth, addPlayer, editPlayer, removePlayer, slotsOf, isPitcher, isExclusive, starters,
   };
   root.DC_Model = Model;
   if (typeof module !== "undefined") module.exports = Model;

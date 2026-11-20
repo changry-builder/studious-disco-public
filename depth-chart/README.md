@@ -11,9 +11,11 @@ Team rosters and depth charts drawn on the playing surface. Open `index.html` in
   - Mets: players under a guaranteed deal, a club option or team control (pre-arb and arbitration).
   - UCLA: every player stays five years, so a senior returns as a fifth-year graduate and a graduate leaves. Set **Leaves early after** on a player to change that (draft, transfer).
 - **Hover a name** for free agency (baseball) or class (basketball) in the season you're viewing. Tap a name on a phone.
-- **Move players** by dragging between positions, or use ▲ ▼ ✕ on a row. Dragging from the roster list adds a player to a position, so one player can be listed at several. Drag a row back to the roster list to take it off a position. Depth changes apply to the season you're viewing and carry forward to later seasons until you change those.
+- **Move players** by dragging between positions, or use ▲ ▼ on a row. Depth changes apply to the season you're viewing and carry forward to later seasons until you change those.
+  - Basketball: every player is on the court once, at their primary position, and the roster list sits beside the court (guards and forwards; centers count as forwards). Dragging a player to another position moves them. The **Starting Lineup** overlay names the first player at each position; click ▾ to hide it.
+  - Baseball: dragging from the roster list adds a player to a position, so one player can be listed at several. ✕ or dragging back to the roster list takes them off a position.
 - **Add player** for a potential signing, recruit or transfer. Prospects are shown dashed. Click any name to edit contract or class details, change roster status, or remove the player.
-- **Contracts & team control / Eligibility by season** shows every player's status season by season.
+- **Contracts & team control / Eligibility by season** shows every player's jersey number and status season by season. Click a season heading to list only that season's players (click it again, or **Show all seasons**, to go back). Type a name in the last row to add a player who joins in the selected season; press Enter to add the next one.
 - **Reset changes** puts the team back to the built-in data. Changes are saved in this browser only; **Refresh from web** has a JSON box to copy them elsewhere.
 
 ## Data

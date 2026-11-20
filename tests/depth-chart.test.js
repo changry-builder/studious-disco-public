@@ -97,3 +97,32 @@ test("a signing with only a guaranteed year is a free agent after it", () => {
   assert.equal(M.lastSeason(METS, p), 2028);
   assert.ok(M.playersFor(METS, state, 2027, "26").some((x) => x.id === id));
 });
+
+test("basketball players sit at exactly one position, their primary one by default", () => {
+  for (const t of [MEN, WOMEN]) {
+    for (const season of t.seasons) {
+      const d = M.depthFor(t, S0, season);
+      const seen = Object.values(d).flat();
+      const onTeam = M.playersFor(t, S0, season);
+      assert.equal(seen.length, new Set(seen).size, `${t.id} ${season}: duplicates`);
+      assert.equal(seen.length, onTeam.length, `${t.id} ${season}: everyone placed`);
+      if (season === t.baseSeason) for (const p of onTeam) assert.ok(d[p.pos[0]].includes(p.id), `${p.id} at ${p.pos[0]}`);
+    }
+  }
+});
+
+test("moving a basketball player takes them off their old position", () => {
+  let s = M.moveInDepth(MEN, S0, 2025, { id: "perry", from: null, to: "PG", beforeId: "dent" });
+  const d = M.depthFor(MEN, s, 2025);
+  assert.equal(d.PG[0], "perry");
+  assert.ok(!d.SG.includes("perry"));
+  assert.equal(M.moveInDepth(MEN, s, 2025, { id: "perry", from: "PG", to: null }), s, "can't take a player off the court");
+  assert.deepEqual(M.starters(MEN, s, 2025).map((x) => x.id), ["perry", "clark", "dailey", "bilodeau", "booker"]);
+});
+
+test("old saved depth with a player at two positions shows them once, at their primary", () => {
+  const s = Object.assign(M.emptyState(), { depth: { 2025: { PG: ["perry", "dent"], SG: ["perry", "clark"], SF: [], PF: [], C: [] } } });
+  const d = M.depthFor(MEN, s, 2025);
+  assert.ok(!d.PG.includes("perry"));
+  assert.equal(d.SG[0], "perry");
+});
