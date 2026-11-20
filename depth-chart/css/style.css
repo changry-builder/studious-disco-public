@@ -78,7 +78,6 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .count { color: var(--ink); margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--rule); }
 .count.over { color: var(--danger); border-color: var(--danger); }
 .board { grid-area: board; min-width: 0; display: grid; gap: 12px; align-content: start; }
-.field-basketball { max-width: 820px; justify-self: center; }
 
 /* ---------- field ---------- */
 .field { position: relative; width: 100%; aspect-ratio: var(--aspect, 5 / 4); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
@@ -118,8 +117,25 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .side h3 { font-size: 18px; text-transform: uppercase; margin-bottom: 8px; }
 .side-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 
+/* ---------- basketball: roster right beside the court ---------- */
+.layout.sport-basketball { grid-template-columns: minmax(0, 820px) 290px; justify-content: start; }
+
+.lineup {
+  position: absolute; right: 2%; bottom: 2.5%; z-index: 2; width: min(250px, 30%);
+  background: var(--card); color: var(--card-ink); border-radius: var(--r); border: 2px solid var(--accent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); font-size: 13px;
+}
+.lineup header { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 3px 10px; background: var(--accent); color: var(--accent-ink); }
+.lineup h3 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.06em; }
+.lineup ol { list-style: none; margin: 0; padding: 4px 0; }
+.lineup li { display: flex; align-items: center; gap: 6px; padding: 2px 10px; }
+.lineup li b { width: 24px; flex: none; font-family: var(--f-display); color: var(--accent); font-size: 15px; }
+.lineup-toggle { border: 0; background: none; color: inherit; cursor: pointer; font-weight: 700; padding: 2px 6px; }
+.lineup.collapsed { width: auto; border-width: 0; }
+.lineup.collapsed .lineup-toggle { background: var(--accent); color: var(--accent-ink); border-radius: var(--r); padding: 5px 10px; font-family: var(--f-display); font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; }
+
 /* ---------- roster list ---------- */
-.roster { grid-area: roster; background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 12px; align-self: start; max-height: calc(100vh - 40px); overflow: auto; position: sticky; top: 12px; }
+.roster { grid-area: roster; background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 12px; align-self: start; }
 .roster.drop-target { outline: 2px dashed var(--accent); }
 .roster h3 { font-size: 20px; }
 .roster h3 span, .roster h4 span { color: var(--muted); font-weight: 500; }
@@ -139,6 +155,18 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; }
 thead th { font-family: var(--f-display); font-size: 15px; color: var(--muted); }
+.yr { border: 1px solid transparent; background: none; color: inherit; font: inherit; cursor: pointer; padding: 1px 6px; border-radius: 4px; }
+.yr:hover { border-color: var(--rule); }
+.yr[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+th.num, td.num { width: 1%; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+tr.grp th span { font-weight: 500; }
+.filter-note { margin: 0 0 6px; font-size: 13px; }
+.qa-form { display: none; }
+tfoot td { border-bottom: 0; padding-top: 8px; }
+.qa-row input[name="num"] { width: 3.5em; text-align: right; }
+.qa-row input[name="name"] { width: 100%; min-width: 180px; }
+.qa-more { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.qa-lbl { display: inline-flex; align-items: center; gap: 6px; }
 th.cur, td.cur { background: rgba(255, 122, 26, 0.1); }
 thead th.cur { color: var(--accent); }
 tr.grp th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding-top: 10px; }
@@ -192,8 +220,9 @@ code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
 /* ---------- smaller screens ---------- */
 @media (max-width: 1040px) {
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "board" "roster" "table"; }
-  .roster { position: static; max-height: none; }
   .roster ul { columns: 2 240px; }
+  .layout.sport-basketball { grid-template-columns: minmax(0, 1fr) 240px; grid-template-areas: "summary summary" "board roster" "table table"; }
+  .layout.sport-basketball .roster ul { columns: auto; }
 }
 @media (max-width: 720px) {
   .top, .controls, .layout, .foot { padding-left: 16px; padding-right: 16px; }
@@ -203,6 +232,8 @@ code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
   .slots { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
   .slot.on-field { position: static; transform: none; width: auto; }
   .side-slots { grid-template-columns: minmax(0, 1fr); }
+  .layout.sport-basketball { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "board" "roster" "table"; }
+  .lineup { position: static; width: auto; margin-top: 10px; }
   .tools { display: inline-flex; }
   .chip { display: none; }
   .pform { grid-template-columns: 1fr; }

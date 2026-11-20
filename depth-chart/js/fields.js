@@ -64,7 +64,7 @@
     basketball: {
       svg: courtSVG,
       aspect: "100 / 94",
-      slots: { C: [50, 22], PF: [20, 26], SF: [80, 42], SG: [20, 70], PG: [62, 82] },
+      slots: { C: [50, 22], PF: [20, 26], SF: [80, 42], SG: [20, 64], PG: [44, 82] },
       side: null,
     },
   };

@@ -1,6 +1,7 @@
 /* UCLA Bruins basketball, 2025-26 rosters.
  * `year` is the player's year in college during the base season (1 = freshman ... 5 = fifth year / graduate).
  * Projections assume every player stays five years, so year 5 is the last.
+ * Each player is listed once, at their primary position (pos[0]); the first at each position starts.
  * `verify: true` marks details gathered from secondary sources that still need checking.
  */
 (function (root) {
@@ -33,11 +34,11 @@
       P("jovic", "Filip Jovic", null, ["PF", "C"], 1, { verify: true }),
     ],
     depth: {
-      PG: ["dent", "perry", "peoples", "freeny"],
-      SG: ["perry", "clark", "bwilliams", "horry"],
+      PG: ["dent", "peoples", "freeny"],
+      SG: ["perry", "clark", "bwilliams", "horry", "seidler"],
       SF: ["dailey", "brown", "alston"],
       PF: ["bilodeau", "jamerson", "jovic"],
-      C: ["booker", "jamerson", "jovic"],
+      C: ["booker"],
     },
   };
 
@@ -65,11 +66,11 @@
       P("grant", "Megan Grant", null, ["SF", "PF"], 4, { verify: true }),
     ],
     depth: {
-      PG: ["rice", "legerwalker", "karamouzi"],
+      PG: ["rice", "karamouzi"],
       SG: ["kneepkens", "legerwalker", "aarnisalo"],
       SF: ["jaquez", "bilic", "grant"],
       PF: ["gardiner", "dugalic", "sbetts"],
-      C: ["lbetts", "sbetts", "muse"],
+      C: ["lbetts", "muse"],
     },
   };
 
