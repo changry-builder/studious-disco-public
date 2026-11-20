@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self' https://overpass-api.de https://overpass.private.coffee https://overpass.kumi.systems https://nominatim.openstreetmap.org; manifest-src 'self'; worker-src 'self'">
+  <title>What to Eat</title>
+  <meta name="description" content="Can't decide what to eat? Swipe through cuisines, settle it with showdowns, then find real places nearby.">
+  <meta name="theme-color" content="#E4572E">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="js/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body data-phase="pick">
+  <a class="skip" href="#app">Skip to content</a>
+
+  <header class="topbar">
+    <button type="button" class="brand" id="btn-home" aria-label="What to eat — start over">
+      <span class="brand-mark" aria-hidden="true">🍽️</span>
+      <span class="brand-name">What to eat</span>
+    </button>
+    <span class="topbar-step" id="step" aria-hidden="true"></span>
+  </header>
+
+  <main id="app" tabindex="-1">
+    <section id="screen-pick" class="screen" aria-labelledby="h-pick" hidden></section>
+    <section id="screen-duel" class="screen" aria-labelledby="h-duel" hidden></section>
+    <section id="screen-winner" class="screen" aria-labelledby="h-winner" hidden></section>
+    <section id="screen-results" class="screen" aria-labelledby="h-results" hidden></section>
+    <noscript><p class="noscript">What to Eat needs JavaScript to run. It has no tracking and no accounts — just turn scripts on for this page.</p></noscript>
+  </main>
+
+  <footer class="footer">
+    <p class="attrib">Map &amp; data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors (ODbL) · Search by <a href="https://nominatim.org/" target="_blank" rel="noopener noreferrer">Nominatim</a></p>
+    <div class="footer-links">
+      <button type="button" class="link-btn" id="btn-install" hidden>Install app</button>
+      <button type="button" class="link-btn" id="btn-about">About &amp; privacy</button>
+    </div>
+  </footer>
+
+  <dialog id="about" class="sheet" aria-labelledby="about-title">
+    <form method="dialog" class="sheet-in">
+      <h2 id="about-title">About What to Eat</h2>
+      <h3>How it works</h3>
+      <p>Keep the cuisines that sound good and rule out the rest. Ties are settled with head-to-head showdowns until one winner is left. Then we show real restaurants of that kind near a spot you pick.</p>
+      <h3>Data</h3>
+      <p>Restaurants come from <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors (ODbL), fetched through the Overpass API. Addresses are searched with Nominatim. Map tiles are from tile.openstreetmap.org. Listings are only as complete and current as the volunteers who map them, so check hours before you go. Places labelled “(sample)” are made up for demos.</p>
+      <h3>Privacy</h3>
+      <p>No accounts, no analytics, no ads. Your location is only used when you press “Use my location”, search an address or tap the map, and it is sent only to Overpass, Nominatim and the map tile server. It never goes in a link unless you tick “Include my search location” when sharing.</p>
+      <label class="check"><input type="checkbox" id="opt-remember"> <span>Remember my last search location on this device</span></label>
+      <p class="about-row"><button type="button" class="btn btn-ghost btn-sm" id="btn-clear-history">Clear recent winners</button></p>
+      <p class="fine" id="about-version"></p>
+      <div class="sheet-actions"><button class="btn btn-primary" value="close">Done</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="share" class="sheet" aria-labelledby="share-title">
+    <form method="dialog" class="sheet-in">
+      <h2 id="share-title">Share this</h2>
+      <label class="sr-only" for="share-url">Link</label>
+      <input class="input" id="share-url" type="text" readonly>
+      <label class="check"><input type="checkbox" id="share-loc"> <span>Include my search location</span></label>
+      <p class="fine">Off by default. Turn it on and anyone with the link can see roughly where you searched.</p>
+      <div class="sheet-actions">
+        <button type="button" class="btn btn-primary" id="share-go">Share link</button>
+        <button class="btn btn-ghost" value="close">Close</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+  <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="js/vendor/leaflet/leaflet.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/cuisines.js"></script>
+  <script src="js/sample-data.js"></script>
+  <script src="js/rng.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/geo.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/map-view.js"></script>
+  <script src="js/pwa.js"></script>
+  <script src="js/ui-pick.js"></script>
+  <script src="js/ui-duel.js"></script>
+  <script src="js/ui-results.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
