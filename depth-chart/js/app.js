@@ -46,7 +46,7 @@
   // Edits live in this browser's storage and are applied on top of whatever roster data the site ships,
   // so updating the site never replaces them. Before a new version first runs, every team's edits are
   // also copied into an automatic snapshot that can be restored from "Save / restore".
-  const SITE_VERSION = "2026-11-20";
+  const SITE_VERSION = "2026-11-20.2";
   const SNAPSHOTS_KEPT = 5;
   const TEAM_IDS = Object.keys(BUILTIN);
 
