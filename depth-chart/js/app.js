@@ -42,6 +42,56 @@
   ui.tableOnly = ui.tableOnly || {};
   const states = {};
 
+  // ---------- keeping edits safe across new versions of the site ----------
+  // Edits live in this browser's storage and are applied on top of whatever roster data the site ships,
+  // so updating the site never replaces them. Before a new version first runs, every team's edits are
+  // also copied into an automatic snapshot that can be restored from "Save / restore".
+  const SITE_VERSION = "2026-11-20";
+  const SNAPSHOTS_KEPT = 5;
+  const TEAM_IDS = Object.keys(BUILTIN);
+
+  function collectEdits() {
+    const teams = {};
+    for (const id of TEAM_IDS) {
+      const state = store.get(`dc.state.${id}`, null);
+      const seed = store.get(`dc.seed.${id}`, null);
+      if (state || seed) teams[id] = { state, seed };
+    }
+    return teams;
+  }
+  function snapshot(reason) {
+    const teams = collectEdits();
+    if (!Object.keys(teams).length) return;
+    const list = store.get("dc.snapshots", []);
+    list.unshift({ at: new Date().toISOString(), reason, schema: M.SCHEMA, teams });
+    store.set("dc.snapshots", list.slice(0, SNAPSHOTS_KEPT));
+  }
+  function restoreTeams(teams) {
+    snapshot("Before restoring");
+    for (const [id, saved] of Object.entries(teams || {})) {
+      if (!BUILTIN[id] || !saved) continue;
+      // Older backups stored the edits directly; newer ones wrap them as { state, seed }.
+      const wrapped = "state" in saved || "seed" in saved;
+      const state = wrapped ? saved.state : saved;
+      if (state) store.set(`dc.state.${id}`, M.normalizeState(state));
+      else store.del(`dc.state.${id}`);
+      if (wrapped && saved.seed) store.set(`dc.seed.${id}`, saved.seed);
+      else store.del(`dc.seed.${id}`);
+      delete states[id];
+    }
+  }
+  (function upgrade() {
+    const seen = store.get("dc.siteVersion", null);
+    if (seen === SITE_VERSION) return;
+    snapshot(seen ? `Before update to ${SITE_VERSION} (was ${seen})` : `Before update to ${SITE_VERSION}`);
+    // Re-save each team's edits in the current format; nothing is dropped.
+    for (const id of TEAM_IDS) {
+      const raw = store.get(`dc.state.${id}`, null);
+      if (raw) store.set(`dc.state.${id}`, M.normalizeState(raw));
+    }
+    store.set("dc.siteVersion", SITE_VERSION);
+  })();
+
   function team() {
     const id = ui.team[ui.sport];
     const override = store.get(`dc.seed.${id}`, null);
@@ -145,7 +195,7 @@
     const slots = Object.entries(layout.slots)
       .map(([pos, [x, y]]) => slotHTML(t, s, pos, depth[pos], { x, y }))
       .join("");
-    field.innerHTML = `<div class="turf">${layout.svg}</div>${t.sport === "basketball" ? lineupHTML(t, s) : ""}<div class="slots">${slots}</div>`;
+    field.innerHTML = `<div class="turf">${layout.svg}</div>${lineupHTML(t, s)}<div class="slots">${slots}</div>`;
 
     const side = $("#side");
     if (layout.side) {
@@ -164,16 +214,17 @@
     if (ui.lineupHidden) {
       return `<aside class="lineup collapsed"><button type="button" class="lineup-toggle" data-lineup aria-expanded="false">Starting Lineup ▸</button></aside>`;
     }
+    const baseball = t.sport === "baseball";
     const rows = M.starters(t, st, s, view(t))
       .map(({ pos, id }) => {
         const p = id && playerById(t, id);
         if (!p) return `<li><b>${esc(pos)}</b><span class="muted">Open</span></li>`;
         return `<li><b>${esc(pos)}</b><button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${
           p.num != null && p.num !== "" ? `<i>#${esc(p.num)}</i> ` : ""
-        }${esc(p.name)}</button><span class="chip">${esc(chipText(t, p, s))}</span></li>`;
+        }${esc(baseball ? shortName(p.name) : p.name)}</button>${baseball ? "" : `<span class="chip">${esc(chipText(t, p, s))}</span>`}</li>`;
       })
       .join("");
-    return `<aside class="lineup" aria-label="Starting lineup">
+    return `<aside class="lineup lineup-${t.sport}" aria-label="Starting lineup">
       <header><h3>Starting Lineup</h3><button type="button" class="lineup-toggle" data-lineup aria-expanded="true" title="Hide">▾</button></header>
       <ol>${rows}</ol>
     </aside>`;
@@ -197,11 +248,6 @@
           <span class="tools">
             <button type="button" data-act="up" title="Move up" aria-label="Move ${esc(p.name)} up">▲</button>
             <button type="button" data-act="down" title="Move down" aria-label="Move ${esc(p.name)} down">▼</button>
-            ${
-              M.isExclusive(t)
-                ? ""
-                : `<button type="button" data-act="drop" title="Remove from ${esc(pos)}" aria-label="Remove ${esc(p.name)} from ${esc(pos)}">✕</button>`
-            }
           </span>
         </li>`;
       })
@@ -246,9 +292,9 @@
     const depth = M.depthFor(t, st, s, view(t));
     $("#roster").innerHTML =
       `<h3>Roster <span>${esc(M.seasonLabel(t, s))}</span></h3><p class="hint">${
-        t.sport === "baseball"
-          ? "Drag onto the field to add to a position. Drag here to take a player off a position."
-          : "Everyone plays their primary position. Drag a player to another spot on the court to move them."
+        `Everyone starts at their primary position. Drag a player to another spot on the ${
+          t.sport === "baseball" ? "field" : "court"
+        } to move them.`
       }</p>` +
       groupsFor(t, players, { centersAsForwards: t.sport === "basketball" })
         .filter(([, list]) => list.length)
@@ -430,7 +476,6 @@
       const s = season(t);
       if (act.dataset.act === "up") setState(t, M.shiftInDepth(t, st, s, view(t), pos, id, -1));
       if (act.dataset.act === "down") setState(t, M.shiftInDepth(t, st, s, view(t), pos, id, +1));
-      if (act.dataset.act === "drop") setState(t, M.moveInDepth(t, st, s, { id, from: pos, to: null }));
       return;
     }
     const open = e.target.closest("[data-open]");
@@ -439,9 +484,11 @@
 
   $("#add-btn").addEventListener("click", () => openForm(null));
   $("#refresh-btn").addEventListener("click", openRefresh);
+  $("#save-btn").addEventListener("click", openSave);
   $("#reset-btn").addEventListener("click", () => {
     const t = team();
-    if (!confirm(`Undo every change you made to the ${t.name}: moves, additions and edits?`)) return;
+    if (!confirm(`Undo every change you made to the ${t.name}: moves, additions and edits?\n\nA snapshot is kept under Save / restore.`)) return;
+    snapshot(`Before resetting ${t.short}`);
     store.del(`dc.state.${t.id}`);
     store.del(`dc.seed.${t.id}`);
     delete states[t.id];
@@ -488,14 +535,11 @@
   document.addEventListener("dragover", (e) => {
     if (!drag) return;
     const pt = dropPoint(e);
-    const roster = e.target.closest("#roster");
-    if (!pt && !(roster && drag.from && !M.isExclusive(team()))) return;
+    if (!pt) return;
     e.preventDefault();
     clearMarks();
-    if (pt) {
-      pt.slot.classList.add("drop-target");
-      if (pt.mark) pt.mark[0].classList.add(pt.mark[1]);
-    } else roster.classList.add("drop-target");
+    pt.slot.classList.add("drop-target");
+    if (pt.mark) pt.mark[0].classList.add(pt.mark[1]);
   });
   document.addEventListener("drop", (e) => {
     if (!drag) return;
@@ -505,8 +549,7 @@
     clearMarks();
     const st = stateOf(t);
     const s = season(t);
-    if (pt) setState(t, M.moveInDepth(t, st, s, { id: drag.id, from: drag.from, to: pt.pos, beforeId: pt.beforeId }));
-    else if (e.target.closest("#roster") && drag.from && !M.isExclusive(t)) setState(t, M.moveInDepth(t, st, s, { id: drag.id, from: drag.from, to: null }));
+    if (pt) setState(t, M.moveInDepth(t, st, s, { id: drag.id, to: pt.pos, beforeId: pt.beforeId }));
     drag = null;
   });
 
@@ -554,19 +597,17 @@
                 ? slots
                     .map(
                       (x) =>
-                        `<li><b>${esc(x.pos)}</b> #${x.rank} on the depth chart${
-                          M.isExclusive(t) ? "" : ` <button type="button" class="link" data-unslot="${esc(x.pos)}">Remove</button>`
-                        }</li>`
+                        `<li><b>${esc(x.pos)}</b> #${x.rank} on the depth chart</li>`
                     )
                     .join("")
                 : `<li class="muted">Not at any position.</li>`
             }</ul>
             <div class="row">
-              <label>${M.isExclusive(t) ? "Move to" : "Add at"} <select id="add-pos">${positions
-                .map((x) => `<option value="${x}"${x === (M.isExclusive(t) && slots[0] ? slots[0].pos : p.pos[0]) ? " selected" : ""}>${x} — ${esc(M.posName(t, x))}</option>`)
+              <label>Move to <select id="add-pos">${positions
+                .map((x) => `<option value="${x}"${x === (slots[0] ? slots[0].pos : p.pos[0]) ? " selected" : ""}>${x} — ${esc(M.posName(t, x))}</option>`)
                 .join("")}</select></label>
               <label>Place <select id="add-rank"><option value="top">Top (starter)</option><option value="end" selected>Bottom</option></select></label>
-              <button type="button" id="do-slot" class="btn">${M.isExclusive(t) ? "Move" : "Add"}</button>
+              <button type="button" id="do-slot" class="btn">Move</button>
             </div>`
           : `<p class="muted">Not on the team in ${esc(M.seasonLabel(t, s))}.</p>`
       }
@@ -587,19 +628,13 @@
       </footer>`);
 
     const body = $("#dlg-body");
-    body.querySelectorAll("[data-unslot]").forEach((b) =>
-      b.addEventListener("click", () => {
-        setState(t, M.moveInDepth(t, stateOf(t), s, { id, from: b.dataset.unslot, to: null }));
-        openPlayer(id);
-      })
-    );
     const doSlot = $("#do-slot", body);
     if (doSlot)
       doSlot.addEventListener("click", () => {
         const pos = $("#add-pos", body).value;
         const top = $("#add-rank", body).value === "top";
         const raw = M.depthFor(t, stateOf(t), s, "all")[pos].filter((x) => x !== id);
-        setState(t, M.moveInDepth(t, stateOf(t), s, { id, from: null, to: pos, beforeId: top ? raw[0] || null : null }));
+        setState(t, M.moveInDepth(t, stateOf(t), s, { id, to: pos, beforeId: top ? raw[0] || null : null }));
         openPlayer(id);
       });
     const lvl = $("#lvl", body);
@@ -742,21 +777,7 @@
              <div class="row"><button type="button" class="btn primary" id="do-refresh">Search the web now</button><span id="refresh-msg" class="muted"></span></div>`
           : `<p>Live refresh needs a small roster service: a server-side function that searches the web for the latest roster and returns it as JSON in the same shape as the built-in data. A static page can't do that safely on its own. Set <code>window.DC_CONFIG = { refreshUrl: "…" }</code> in <code>js/config.js</code> to turn this button on.</p>`
       }
-      <h3>Move your changes between browsers</h3>
-      <p class="muted">Copy this JSON to keep a backup, or paste JSON here to load it. It holds your moves, additions and edits for ${esc(t.short)}.</p>
-      <textarea id="json" rows="7" spellcheck="false">${esc(JSON.stringify(stateOf(t), null, 1))}</textarea>
-      <footer class="dlg-foot">
-        <button type="button" class="btn" id="do-import">Load pasted JSON</button>
-        <button type="button" class="btn" data-close>Close</button>
-      </footer>`);
-    $("#do-import").addEventListener("click", () => {
-      try {
-        setState(t, M.normalizeState(JSON.parse($("#json").value)));
-        dlg.close();
-      } catch (err) {
-        alert("That isn't valid JSON.");
-      }
-    });
+      <footer class="dlg-foot"><button type="button" class="btn" data-close>Close</button></footer>`);
     const btn = $("#do-refresh");
     if (btn)
       btn.addEventListener("click", async () => {
@@ -768,6 +789,7 @@
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const data = await res.json();
           if (!Array.isArray(data.players)) throw new Error("no players in the response");
+          snapshot(`Before refreshing ${t.short} from the web`);
           store.set(`dc.seed.${t.id}`, { players: data.players, depth: data.depth || t.depth, asOf: data.asOf || "Refreshed from the web" });
           msg.textContent = `Updated: ${data.players.length} players.`;
           render();
@@ -777,6 +799,81 @@
           btn.disabled = false;
         }
       });
+  }
+
+  // ---------- save / restore ----------
+  function openSave() {
+    const teams = collectEdits();
+    const snaps = store.get("dc.snapshots", []);
+    const names = (ts) =>
+      Object.keys(ts)
+        .map((id) => (BUILTIN[id] ? BUILTIN[id].short : id))
+        .join(", ");
+    const when = (iso) => {
+      const d = new Date(iso);
+      return isNaN(d) ? iso : d.toLocaleString();
+    };
+    openDialog(`
+      <header class="dlg-head">
+        <div><h2>Save / restore your edits</h2><p>Your moves, additions and edits are saved in this browser automatically and stay through updates to the site.</p></div>
+        <button type="button" class="x" data-close aria-label="Close">✕</button>
+      </header>
+      <h3>Backup file</h3>
+      <p class="muted">Download a file to keep a copy, or to move your edits to another browser or computer. ${
+        Object.keys(teams).length ? `Includes: ${esc(names(teams))}.` : "You haven't made any edits yet."
+      }</p>
+      <div class="row">
+        <button type="button" class="btn primary" id="do-download"${Object.keys(teams).length ? "" : " disabled"}>Download backup</button>
+        <label class="btn file-btn">Restore from file…<input type="file" id="do-upload" accept=".json,application/json" hidden></label>
+      </div>
+      <h3>Automatic snapshots</h3>
+      ${
+        snaps.length
+          ? `<ul class="snaps">${snaps
+              .map(
+                (x, i) => `<li><div><b>${esc(when(x.at))}</b><span class="muted">${esc(x.reason)} · ${esc(names(x.teams || {}))}</span></div>
+                  <button type="button" class="btn" data-snap="${i}">Restore</button></li>`
+              )
+              .join("")}</ul>`
+          : `<p class="muted">None yet. One is taken before each site update, reset, restore or web refresh.</p>`
+      }
+      <footer class="dlg-foot"><button type="button" class="btn" data-close>Close</button></footer>`);
+
+    const body = $("#dlg-body");
+    $("#do-download", body).addEventListener("click", () => {
+      const data = { app: "depth-chart", schema: M.SCHEMA, site: SITE_VERSION, savedAt: new Date().toISOString(), teams: collectEdits() };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `depth-chart-edits-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    $("#do-upload", body).addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        if (!data || data.app !== "depth-chart" || !data.teams) throw new Error("not a Depth Chart backup");
+        if (!confirm(`Replace your edits for ${names(data.teams) || "no teams"} with the backup from ${when(data.savedAt)}?`)) return;
+        restoreTeams(data.teams);
+        dlg.close();
+        render();
+      } catch (err) {
+        alert(`Couldn't restore that file (${err.message}).`);
+      }
+    });
+    body.querySelectorAll("[data-snap]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const x = snaps[Number(b.dataset.snap)];
+        if (!confirm(`Replace your edits for ${names(x.teams)} with the snapshot from ${when(x.at)}?`)) return;
+        restoreTeams(x.teams);
+        dlg.close();
+        render();
+      })
+    );
   }
 
   render();

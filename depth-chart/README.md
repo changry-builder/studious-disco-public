@@ -11,12 +11,20 @@ Team rosters and depth charts drawn on the playing surface. Open `index.html` in
   - Mets: players under a guaranteed deal, a club option or team control (pre-arb and arbitration).
   - UCLA: every player stays five years, so a senior returns as a fifth-year graduate and a graduate leaves. Set **Leaves early after** on a player to change that (draft, transfer).
 - **Hover a name** for free agency (baseball) or class (basketball) in the season you're viewing. Tap a name on a phone.
-- **Move players** by dragging between positions, or use ▲ ▼ on a row. Depth changes apply to the season you're viewing and carry forward to later seasons until you change those.
-  - Basketball: every player is on the court once, at their primary position, and the roster list sits beside the court (guards and forwards; centers count as forwards). Dragging a player to another position moves them. The **Starting Lineup** overlay names the first player at each position; click ▾ to hide it.
-  - Baseball: dragging from the roster list adds a player to a position, so one player can be listed at several. ✕ or dragging back to the roster list takes them off a position.
+- **Move players** by dragging between positions, or use ▲ ▼ on a row (or click a name and choose **Move to**). Every player is on the field or court once, starting at their primary position; dragging to another position moves them. Depth changes apply to the season you're viewing and carry forward to later seasons until you change those.
+- **Starting Lineup** on the field or court names the first player at each position: the nine fielders and the day's starting pitcher for baseball, the five starters for basketball. Click ▾ to hide it.
+- The **roster list** sits beside the field (basketball counts centers as forwards).
 - **Add player** for a potential signing, recruit or transfer. Prospects are shown dashed. Click any name to edit contract or class details, change roster status, or remove the player.
 - **Contracts & team control / Eligibility by season** shows every player's jersey number and status season by season. Click a season heading to list only that season's players (click it again, or **Show all seasons**, to go back). Type a name in the last row to add a player who joins in the selected season; press Enter to add the next one.
-- **Reset changes** puts the team back to the built-in data. Changes are saved in this browser only; **Refresh from web** has a JSON box to copy them elsewhere.
+- **Reset changes** puts the team back to the built-in data.
+
+## Your edits and site updates
+
+Edits are saved automatically in the browser you use. They're stored as changes on top of the built-in rosters, keyed by player id, so pulling a new version of the site keeps them. Any roster detail you didn't change picks up the new data.
+
+- Before a new version first runs, the site takes an automatic snapshot of every team's edits. It does the same before a reset, a restore or a web refresh. The last five snapshots are listed under **Save / restore**, each with a **Restore** button.
+- **Save / restore → Download backup** saves all teams' edits to a `.json` file. **Restore from file** loads one, so you can move edits to another browser or computer, or onto the GitHub Pages copy. Edits made when you open `index.html` from disk and edits made on the Pages site are stored separately by the browser.
+- For future versions: never rename a player id in the data files. When the saved format changes, bump `SCHEMA` and add a migration step in `js/model.js` rather than discarding old data. The tests pin the current ids and check that first-release edits still load.
 
 ## Data
 
