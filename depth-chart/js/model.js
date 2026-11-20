@@ -24,19 +24,36 @@
   const posName = (team, pos) => POSITION_NAMES[team.sport][pos] || pos;
   const PITCHER_POS = new Set(["SP", "CL", "SU", "RP"]);
 
+  /*
+   * Saved edits outlive new versions of the site. They are stored as changes on top of the built-in
+   * data (keyed by player id), never as a copy of it, so a data update still shows through anything the
+   * user didn't touch. Rules for future versions:
+   *   - never rename or reuse a player id (tests/depth-chart.test.js pins the current ones);
+   *   - when the saved shape has to change, bump SCHEMA and add a step to MIGRATIONS; never drop data.
+   */
+  const SCHEMA = 1;
+  const MIGRATIONS = {
+    // 0 -> 1: the first release saved the same fields without a version number.
+    0: (s) => s,
+  };
+
   function emptyState() {
-    return { added: [], edits: {}, removed: [], depth: {} };
+    return { v: SCHEMA, added: [], edits: {}, removed: [], depth: {} };
   }
 
+  /** Bring saved edits from any earlier version up to date. Unknown fields are kept. */
   function normalizeState(s) {
     const e = emptyState();
     if (!s || typeof s !== "object") return e;
-    return {
-      added: Array.isArray(s.added) ? s.added : e.added,
-      edits: s.edits && typeof s.edits === "object" ? s.edits : e.edits,
-      removed: Array.isArray(s.removed) ? s.removed : e.removed,
-      depth: s.depth && typeof s.depth === "object" ? s.depth : e.depth,
-    };
+    let cur = Object.assign({}, s);
+    for (let v = Number(cur.v) || 0; v < SCHEMA; v++) cur = Object.assign({}, MIGRATIONS[v](cur), { v: v + 1 });
+    return Object.assign(cur, {
+      v: SCHEMA,
+      added: Array.isArray(cur.added) ? cur.added : e.added,
+      edits: cur.edits && typeof cur.edits === "object" ? cur.edits : e.edits,
+      removed: Array.isArray(cur.removed) ? cur.removed : e.removed,
+      depth: cur.depth && typeof cur.depth === "object" ? cur.depth : e.depth,
+    });
   }
 
   function seasonLabel(team, season) {
@@ -151,19 +168,17 @@
     return d;
   }
 
-  /** Basketball keeps each player at exactly one position. */
-  function isExclusive(team) {
-    return team.sport === "basketball";
-  }
-
-  /** Depth chart as shown: ids filtered to players on the team (and in the roster view) that season. */
+  /**
+   * Depth chart as shown: every player on the team that season (and in the roster view) appears at exactly
+   * one position. Saved depth wins; a player listed twice keeps their primary position; anyone not yet
+   * listed goes to the bottom of their primary position.
+   */
   function depthFor(team, state, season, view) {
     const players = playersFor(team, state, season, view);
     const ok = new Set(players.map((p) => p.id));
     const raw = rawDepth(team, state, season);
     const d = {};
     for (const pos of Object.keys(raw)) d[pos] = raw[pos].filter((id) => ok.has(id));
-    if (!isExclusive(team)) return d;
     // One position each: keep the player's primary position if listed there, else their first listing.
     const byId = new Map(players.map((p) => [p.id, p]));
     const keep = new Map();
@@ -185,23 +200,18 @@
 
   /**
    * Move or add a player in a season's depth chart. Returns a new state.
-   *   from: position the player is dragged from, or null when added from the roster list
-   *   to:   destination position, or null to remove from `from`
+   *   to:   destination position (players can't be taken off the field, only moved)
    *   beforeId: place ahead of this player in `to`, or null for the end
+   * The whole season (every roster level) is saved, so hidden 40-man players keep their places.
    */
-  function moveInDepth(team, state, season, { id, from, to, beforeId = null }) {
-    const exclusive = isExclusive(team);
-    // Basketball players can't be taken off the court, only moved to another position.
-    if (exclusive && !to) return state;
-    const d = exclusive ? depthFor(team, state, season, "all") : rawDepth(team, state, season);
-    if (exclusive) for (const pos of Object.keys(d)) d[pos] = d[pos].filter((x) => x !== id);
-    if (from && d[from]) d[from] = d[from].filter((x) => x !== id);
-    if (to && d[to]) {
-      d[to] = d[to].filter((x) => x !== id);
-      const i = beforeId ? d[to].indexOf(beforeId) : -1;
-      if (i === -1) d[to].push(id);
-      else d[to].splice(i, 0, id);
-    }
+  function moveInDepth(team, state, season, { id, to, beforeId = null }) {
+    if (!to) return state;
+    const d = depthFor(team, state, season, "all");
+    if (!d[to]) return state;
+    for (const pos of Object.keys(d)) d[pos] = d[pos].filter((x) => x !== id);
+    const i = beforeId ? d[to].indexOf(beforeId) : -1;
+    if (i === -1) d[to].push(id);
+    else d[to].splice(i, 0, id);
     return Object.assign({}, state, { depth: Object.assign({}, state.depth, { [season]: d }) });
   }
 
@@ -213,7 +223,7 @@
     if (i === -1 || j < 0 || j >= visible.length) return state;
     // Moving up: insert before the player above. Moving down: insert before the one after the player below.
     const beforeId = dir < 0 ? visible[j] : visible[j + 1] || null;
-    return moveInDepth(team, state, season, { id, from: pos, to: pos, beforeId });
+    return moveInDepth(team, state, season, { id, to: pos, beforeId });
   }
 
   function slug(name) {
@@ -228,7 +238,7 @@
     let next = Object.assign({}, state, { added: state.added.concat([p]) });
     const pos = (p.pos || [])[0];
     if (pos && POSITIONS[team.sport].includes(pos)) {
-      next = moveInDepth(team, next, season, { id, from: null, to: pos });
+      next = moveInDepth(team, next, season, { id, to: pos });
     }
     return { state: next, id };
   }
@@ -258,10 +268,16 @@
     return out;
   }
 
-  /** The first player at each position (basketball: the starting five). */
+  /** Positions in the starting lineup: the nine fielders and the day's starting pitcher, or the five on the floor. */
+  const LINEUP = {
+    baseball: ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH", "SP"],
+    basketball: ["PG", "SG", "SF", "PF", "C"],
+  };
+
+  /** The first player at each lineup position. */
   function starters(team, state, season, view) {
     const d = depthFor(team, state, season, view);
-    return POSITIONS[team.sport].map((pos) => ({ pos, id: (d[pos] || [])[0] || null }));
+    return LINEUP[team.sport].map((pos) => ({ pos, id: (d[pos] || [])[0] || null }));
   }
 
   function isPitcher(p) {
@@ -272,7 +288,7 @@
     CLASS_NAMES, CLASS_SHORT, MAX_COLLEGE_YEARS, POSITIONS, POSITION_NAMES, posName,
     emptyState, normalizeState, seasonLabel, allPlayers, firstSeason, lastSeason, isOnTeam, classYear,
     statusFor, tooltipFor, inRosterView, playersFor, seedDepth, rawDepth, depthFor, moveInDepth,
-    shiftInDepth, addPlayer, editPlayer, removePlayer, slotsOf, isPitcher, isExclusive, starters,
+    shiftInDepth, addPlayer, editPlayer, removePlayer, slotsOf, isPitcher, starters, LINEUP, SCHEMA,
   };
   root.DC_Model = Model;
   if (typeof module !== "undefined") module.exports = Model;

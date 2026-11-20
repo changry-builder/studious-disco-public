@@ -5,6 +5,8 @@
  *   options     seasons that are club options
  *   optOuts     seasons after which the player may opt out
  *   roster      "26" (active), "40" (40-man, optioned), "IL" (injured list)
+ * Each player is listed once, at their primary position (pos[0]); the first at each position starts.
+ * Never rename a player id: saved edits refer to players by id.
  * `verify: true` marks details gathered from secondary sources that still need checking.
  */
 (function (root) {
@@ -28,8 +30,8 @@
       // Relievers
       P("williams", "Devin Williams", ["CL", "RP"], { throws: "R", guaranteed: 2028 }),
       P("weaver", "Luke Weaver", ["SU", "RP"], { throws: "R", guaranteed: 2027 }),
-      P("raley", "Brooks Raley", ["RP"], { num: 25, throws: "L", guaranteed: 2026 }),
-      P("garcia", "Luis Garcia", ["RP"], { throws: "R", guaranteed: 2026, verify: true }),
+      P("raley", "Brooks Raley", ["SU", "RP"], { num: 25, throws: "L", guaranteed: 2026 }),
+      P("garcia", "Luis Garcia", ["SU", "RP"], { throws: "R", guaranteed: 2026, verify: true }),
       P("brazoban", "Huascar Brazoban", ["RP"], { num: 43, throws: "R", control: 2028 }),
       P("lovelady", "Richard Lovelady", ["RP"], { throws: "L", control: 2026, verify: true }),
       P("myers", "Tobias Myers", ["RP", "SP"], { throws: "R", control: 2029, verify: true }),
@@ -41,7 +43,7 @@
       P("bichette", "Bo Bichette", ["3B", "SS"], { bats: "R", guaranteed: 2028, optOuts: [2026, 2027] }),
       P("semien", "Marcus Semien", ["2B"], { bats: "R", guaranteed: 2028 }),
       P("polanco", "Jorge Polanco", ["1B", "2B", "DH"], { bats: "S", guaranteed: 2027 }),
-      P("vientos", "Mark Vientos", ["3B", "1B", "DH"], { num: 27, bats: "R", control: 2028 }),
+      P("vientos", "Mark Vientos", ["DH", "3B", "1B"], { num: 27, bats: "R", control: 2028 }),
       P("baty", "Brett Baty", ["3B", "2B"], { bats: "L", control: 2028 }),
       P("young", "Jared Young", ["1B", "DH", "LF"], { bats: "L", control: 2029, verify: true }),
       // Outfielders
@@ -59,22 +61,22 @@
       P("warren", "Austin Warren", ["RP"], { throws: "R", control: 2029, roster: "40", verify: true }),
       P("pintaro", "Jonathan Pintaro", ["RP"], { throws: "R", control: 2031, roster: "40", verify: true }),
       P("senger", "Hayden Senger", ["C"], { bats: "R", control: 2030, roster: "40", verify: true }),
-      P("mauricio", "Ronny Mauricio", ["3B", "SS", "2B"], { bats: "S", control: 2029, roster: "40" }),
+      P("mauricio", "Ronny Mauricio", ["SS", "3B", "2B"], { bats: "S", control: 2029, roster: "40" }),
       P("melendez", "MJ Melendez", ["LF", "RF"], { bats: "L", control: 2027, roster: "40", verify: true }),
       P("morabito", "Nick Morabito", ["CF"], { bats: "R", control: 2031, roster: "40", verify: true }),
     ],
     depth: {
       C: ["alvarez", "torrens", "senger"],
-      "1B": ["polanco", "young", "vientos"],
-      "2B": ["semien", "baty", "polanco"],
-      "3B": ["bichette", "vientos", "baty", "mauricio"],
-      SS: ["lindor", "bichette", "mauricio"],
-      LF: ["soto", "taylor", "melendez"],
+      "1B": ["polanco", "young"],
+      "2B": ["semien"],
+      "3B": ["bichette", "baty"],
+      SS: ["lindor", "mauricio"],
+      LF: ["soto", "melendez"],
       CF: ["robert", "taylor", "morabito"],
-      RF: ["benge", "taylor", "melendez"],
-      DH: ["vientos", "young"],
+      RF: ["benge"],
+      DH: ["vientos"],
       SP: ["peralta", "senga", "holmes", "mclean", "peterson", "manaea", "tong", "scott"],
-      CL: ["williams", "weaver"],
+      CL: ["williams"],
       SU: ["weaver", "raley", "garcia"],
       RP: ["brazoban", "lovelady", "myers", "minter", "ross", "gerber", "warren", "pintaro"],
     },

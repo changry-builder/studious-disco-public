@@ -68,7 +68,7 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 
 .layout {
   display: grid; gap: 16px; padding: 16px 20px 24px;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 290px;
   grid-template-areas: "summary summary" "board roster" "table table";
 }
 .summary { grid-area: summary; }
@@ -117,8 +117,9 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .side h3 { font-size: 18px; text-transform: uppercase; margin-bottom: 8px; }
 .side-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 
-/* ---------- basketball: roster right beside the court ---------- */
+/* ---------- the roster sits right beside the field or court ---------- */
 .layout.sport-basketball { grid-template-columns: minmax(0, 820px) 290px; justify-content: start; }
+.layout.sport-baseball { grid-template-columns: minmax(0, 980px) 290px; justify-content: start; }
 
 .lineup {
   position: absolute; right: 2%; bottom: 2.5%; z-index: 2; width: min(250px, 30%);
@@ -132,11 +133,15 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .lineup li b { width: 24px; flex: none; font-family: var(--f-display); color: var(--accent); font-size: 15px; }
 .lineup-toggle { border: 0; background: none; color: inherit; cursor: pointer; font-weight: 700; padding: 2px 6px; }
 .lineup.collapsed { width: auto; border-width: 0; }
+/* Baseball: ten names in two columns so the box stays in the corner of the field. */
+.lineup-baseball { width: min(300px, 34%); }
+.lineup-baseball ol { display: grid; grid-template-columns: 1fr 1fr; padding: 3px 0; }
+.lineup-baseball li { padding: 1px 6px; gap: 4px; min-width: 0; font-size: 12px; }
+.lineup-baseball li b { width: 20px; font-size: 13px; }
 .lineup.collapsed .lineup-toggle { background: var(--accent); color: var(--accent-ink); border-radius: var(--r); padding: 5px 10px; font-family: var(--f-display); font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* ---------- roster list ---------- */
 .roster { grid-area: roster; background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 12px; align-self: start; }
-.roster.drop-target { outline: 2px dashed var(--accent); }
 .roster h3 { font-size: 20px; }
 .roster h3 span, .roster h4 span { color: var(--muted); font-weight: 500; }
 .roster h4 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 12px 0 4px; }
@@ -219,10 +224,9 @@ code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
 
 /* ---------- smaller screens ---------- */
 @media (max-width: 1040px) {
+  .slot.on-field .chip { display: none; }
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "board" "roster" "table"; }
-  .roster ul { columns: 2 240px; }
-  .layout.sport-basketball { grid-template-columns: minmax(0, 1fr) 240px; grid-template-areas: "summary summary" "board roster" "table table"; }
-  .layout.sport-basketball .roster ul { columns: auto; }
+  .layout.sport-basketball, .layout.sport-baseball { grid-template-columns: minmax(0, 1fr) 240px; grid-template-areas: "summary summary" "board roster" "table table"; }
 }
 @media (max-width: 720px) {
   .top, .controls, .layout, .foot { padding-left: 16px; padding-right: 16px; }
@@ -232,9 +236,17 @@ code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
   .slots { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
   .slot.on-field { position: static; transform: none; width: auto; }
   .side-slots { grid-template-columns: minmax(0, 1fr); }
-  .layout.sport-basketball { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "board" "roster" "table"; }
+  .layout.sport-basketball, .layout.sport-baseball { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "board" "roster" "table"; }
+  .roster ul { columns: 2 160px; }
+  .lineup-baseball { width: auto; }
   .lineup { position: static; width: auto; margin-top: 10px; }
   .tools { display: inline-flex; }
   .chip { display: none; }
   .pform { grid-template-columns: 1fr; }
 }
+
+/* ---------- save / restore ---------- */
+.file-btn { display: inline-flex; align-items: center; color: var(--ink); font-size: 15px; }
+.snaps { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.snaps li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; }
+.snaps li div { display: grid; font-size: 13px; }

@@ -2,6 +2,7 @@
  * `year` is the player's year in college during the base season (1 = freshman ... 5 = fifth year / graduate).
  * Projections assume every player stays five years, so year 5 is the last.
  * Each player is listed once, at their primary position (pos[0]); the first at each position starts.
+ * Never rename a player id: saved edits refer to players by id.
  * `verify: true` marks details gathered from secondary sources that still need checking.
  */
 (function (root) {

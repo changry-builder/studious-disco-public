@@ -64,21 +64,65 @@ test("leaving early ends a player's seasons", () => {
 });
 
 test("moving and reordering the depth chart", () => {
-  let s = M.moveInDepth(METS, S0, 2026, { id: "baty", from: "2B", to: "SS", beforeId: "lindor" });
+  let s = M.moveInDepth(METS, S0, 2026, { id: "baty", to: "SS", beforeId: "lindor" });
   let d = M.depthFor(METS, s, 2026, "40");
   assert.equal(d.SS[0], "baty");
-  assert.ok(!d["2B"].includes("baty"));
+  assert.ok(!d["3B"].includes("baty"), "moving takes a player off their old position");
   s = M.shiftInDepth(METS, s, 2026, "40", "SS", "baty", +1);
   assert.deepEqual(M.depthFor(METS, s, 2026, "40").SS.slice(0, 2), ["lindor", "baty"]);
   // Earlier seasons are untouched; later seasons inherit the edit.
-  assert.equal(M.depthFor(METS, S0, 2026, "40")["2B"][1], "baty");
-  assert.ok(!M.depthFor(METS, s, 2027, "40")["2B"].includes("baty"));
+  assert.equal(M.depthFor(METS, S0, 2026, "40")["3B"][1], "baty");
+  assert.equal(M.depthFor(METS, s, 2027, "40").SS[1], "baty");
+  assert.equal(M.moveInDepth(METS, s, 2026, { id: "baty", to: null }), s, "can't take a player off the field");
 });
 
 test("reordering in the 26-man view keeps hidden 40-man players", () => {
-  // SS raw order: lindor, bichette, mauricio (40-man). Move bichette up in the 26 view.
-  const s = M.shiftInDepth(METS, S0, 2026, "26", "SS", "bichette", -1);
-  assert.deepEqual(M.rawDepth(METS, s, 2026).SS, ["bichette", "lindor", "mauricio"]);
+  // CF: robert, taylor, morabito (40-man). Move Taylor up in the 26-man view.
+  const s = M.shiftInDepth(METS, S0, 2026, "26", "CF", "taylor", -1);
+  assert.deepEqual(M.depthFor(METS, s, 2026, "40").CF, ["taylor", "robert", "morabito"]);
+});
+
+test("every Mets player sits at exactly one position, their primary one", () => {
+  for (const view of ["26", "40"]) {
+    const d = M.depthFor(METS, S0, 2026, view);
+    const seen = Object.values(d).flat();
+    assert.equal(seen.length, new Set(seen).size, `${view}: duplicates`);
+    assert.equal(seen.length, M.playersFor(METS, S0, 2026, view).length, `${view}: everyone placed`);
+    for (const p of M.playersFor(METS, S0, 2026, view)) assert.ok(d[p.pos[0]].includes(p.id), `${p.id} at ${p.pos[0]}`);
+  }
+});
+
+test("the Mets starting lineup is the nine fielders and the day's starter", () => {
+  const lineup = M.starters(METS, S0, 2026, "26");
+  assert.deepEqual(lineup.map((x) => x.pos), ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH", "SP"]);
+  assert.deepEqual(lineup.map((x) => x.id), ["alvarez", "polanco", "semien", "bichette", "lindor", "soto", "robert", "benge", "vientos", "peralta"]);
+});
+
+test("saved edits from the first release still load", () => {
+  // The first release saved edits without a version number.
+  const old = { added: [{ id: "new-x", name: "X", pos: ["RP"], guaranteed: 2027, prospect: true }], edits: { soto: { num: 99 } }, removed: ["raley"], depth: { 2026: { SS: ["lindor", "bichette"] } }, extra: 1 };
+  const s = M.normalizeState(old);
+  assert.equal(s.v, M.SCHEMA);
+  assert.equal(s.extra, 1, "unknown fields are kept");
+  assert.deepEqual(s.added, old.added);
+  const ps = M.playersFor(METS, s, 2026, "40");
+  assert.equal(ps.find((p) => p.id === "soto").num, 99);
+  assert.ok(!ps.some((p) => p.id === "raley"));
+  assert.ok(ps.some((p) => p.id === "new-x"));
+  assert.equal(M.normalizeState(s).v, M.SCHEMA, "normalizing twice is harmless");
+});
+
+test("player ids never change, so saved edits keep pointing at the right players", () => {
+  // If a new data version drops one of these on purpose (a trade, a departure), remove it here too.
+  const ids = {
+    mets: "peralta senga holmes manaea peterson mclean williams weaver raley garcia brazoban lovelady myers alvarez torrens lindor bichette semien polanco vientos baty young soto robert benge taylor minter tong scott ross gerber warren pintaro senger mauricio melendez morabito",
+    "ucla-m": "dent perry clark dailey bilodeau booker brown jamerson bwilliams freeny peoples horry seidler alston jovic",
+    "ucla-w": "rice karamouzi legerwalker aarnisalo kneepkens bilic jaquez sbetts gardiner dugalic muse lbetts grant",
+  };
+  for (const t of TEAMS) {
+    const have = new Set(t.players.map((p) => p.id));
+    for (const id of ids[t.id].split(" ")) assert.ok(have.has(id), `${t.id}: ${id} is missing`);
+  }
 });
 
 test("adding a recruit places them at their position from their first season", () => {
@@ -112,11 +156,11 @@ test("basketball players sit at exactly one position, their primary one by defau
 });
 
 test("moving a basketball player takes them off their old position", () => {
-  let s = M.moveInDepth(MEN, S0, 2025, { id: "perry", from: null, to: "PG", beforeId: "dent" });
+  let s = M.moveInDepth(MEN, S0, 2025, { id: "perry", to: "PG", beforeId: "dent" });
   const d = M.depthFor(MEN, s, 2025);
   assert.equal(d.PG[0], "perry");
   assert.ok(!d.SG.includes("perry"));
-  assert.equal(M.moveInDepth(MEN, s, 2025, { id: "perry", from: "PG", to: null }), s, "can't take a player off the court");
+  assert.equal(M.moveInDepth(MEN, s, 2025, { id: "perry", to: null }), s, "can't take a player off the court");
   assert.deepEqual(M.starters(MEN, s, 2025).map((x) => x.id), ["perry", "clark", "dailey", "bilodeau", "booker"]);
 });
 
