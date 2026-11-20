@@ -44,6 +44,7 @@ jobs:
           cp -r index.html css js img site/
           cp -r who-done-it/dist site/who-done-it
           cp -r depth-chart site/depth-chart
+          cp -r what-to-eat site/what-to-eat
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

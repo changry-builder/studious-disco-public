@@ -358,7 +358,7 @@
       else if (phase === "results") {
         UI.Results.render(screens.results, resultsVM(), resultActions);
         ensureMap();
-        if (changed && mapReady) setTimeout(() => MapView.invalidateSize(), 60);
+        if (changed) setTimeout(() => { if (mapReady) { MapView.invalidateSize(); if (R.center) MapView.setCenter(R.center, { fit: true }); } }, 120);
       }
       if (changed) {
         lastPhase = phase;
