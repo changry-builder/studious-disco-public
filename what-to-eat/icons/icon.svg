@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>What to Eat</title>
+  <!-- Full-bleed brand orange so the same art works for maskable icons. Art sits inside the central 80%. -->
+  <rect width="512" height="512" fill="#E4572E"/>
+  <!-- Plate: cream rim, warm yellow well -->
+  <circle cx="288" cy="262" r="108" fill="#FFF8F0"/>
+  <circle cx="288" cy="262" r="76" fill="#FFD166"/>
+  <!-- Fork: three tines, head, neck, handle, rounded end -->
+  <g fill="#FFF8F0">
+    <rect x="117" y="142" width="10" height="54"/>
+    <rect x="133" y="142" width="10" height="54"/>
+    <rect x="149" y="142" width="10" height="54"/>
+    <rect x="117" y="192" width="42" height="22"/>
+    <rect x="131" y="212" width="14" height="32"/>
+    <rect x="128" y="240" width="20" height="116"/>
+    <circle cx="138" cy="360" r="10"/>
+  </g>
+</svg>
