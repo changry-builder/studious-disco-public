@@ -17,6 +17,8 @@
   --wood: #e3bf8a; --wood-2: #d2ab73; --paint: #2d6cb5; --line: #ffffff; --rim: #ff6a00;
 
   --signed: #3e8e5a; --option: #b9862b; --arb: #3b6fb0; --prearb: #5a6b84; --class: #6a4fb0;
+  /* College class years: one hue per year, freshman to graduate. */
+  --fr: #2e8b57; --so: #2b7bb9; --jr: #7a4fbf; --sr: #c2600f; --gr: #b0344f;
 
   --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --f-body: "Barlow", "Segoe UI", system-ui, sans-serif;
@@ -106,10 +108,14 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .chip { flex: none; font-size: 10px; color: var(--muted); }
 .tools { display: none; flex: none; gap: 1px; }
 .tools button { border: 0; background: rgba(127, 127, 127, 0.25); color: inherit; font-size: 9px; line-height: 1; padding: 3px 4px; border-radius: 3px; cursor: pointer; }
-.dp:hover .tools, .dp:focus-within .tools { display: inline-flex; }
-.dp:hover .chip, .dp:focus-within .chip { display: none; }
-.prospect .pname { font-style: italic; }
-.dp.prospect, .rp.prospect { outline: 1px dashed var(--accent); outline-offset: -1px; border-radius: 4px; }
+.dp:hover .tools, .dp:focus-within .tools, .dp.unplaced .tools { display: inline-flex; }
+.dp:hover .chip:not(.cls), .dp:focus-within .chip:not(.cls) { display: none; }
+/* Outlined: on the team but not on the depth chart yet (needs placing). */
+.dp.unplaced, .rp.unplaced { outline: 1.5px dashed var(--accent); outline-offset: -1px; border-radius: 4px; }
+.dp.unplaced .pname { font-style: italic; }
+.chip.cls { color: #fff; font-weight: 700; padding: 0 4px; border-radius: 3px; line-height: 1.5; }
+.cls-fr { background: var(--fr); } .cls-so { background: var(--so); } .cls-jr { background: var(--jr); }
+.cls-sr { background: var(--sr); } .cls-gr { background: var(--gr); }
 .open-slot { color: var(--muted); font-style: italic; padding: 2px 8px; font-size: 12px; }
 .more { display: block; width: 100%; border: 0; border-top: 1px solid rgba(127, 127, 127, 0.25); background: none; color: var(--blue); font-size: 11px; padding: 2px; cursor: pointer; }
 
@@ -148,7 +154,19 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .roster ul { list-style: none; margin: 0; padding: 0; }
 .rp { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-radius: 4px; cursor: grab; }
 .rp:hover { background: var(--panel-2); }
-.rp.unassigned .pname { color: var(--muted); }
+.rp.injured .pname { color: var(--muted); }
+.il-tag { font-style: normal; font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 3px; background: var(--danger); color: #fff; }
+.il-count { color: var(--danger); font-size: 13px; margin-left: 6px; }
+
+/* ---------- injured list ---------- */
+.il-panel { background: var(--panel); border: 1px dashed var(--danger); border-radius: 12px; padding: 10px 12px 12px; }
+.il-panel.drop-target { outline: 2px dashed var(--danger); outline-offset: 2px; }
+.il-panel h3 { font-size: 18px; text-transform: uppercase; color: var(--danger); }
+.il-panel h3 span { color: var(--muted); font-weight: 500; }
+.il-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 6px; }
+.ilp { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: var(--panel-2); cursor: grab; }
+.ilp .pname { flex: 1; }
+.btn.small { padding: 2px 8px; font-size: 12px; }
 .where { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
 .lvl { font-style: normal; font-size: 10px; padding: 0 5px; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--rule); color: var(--muted); }
 .hint { color: var(--muted); font-size: 13px; margin: 4px 0 6px; }
@@ -179,7 +197,6 @@ td.pos { color: var(--muted); }
 .st { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 3px; color: #fff; }
 .st-signed { background: var(--signed); } .st-option { background: var(--option); } .st-arb { background: var(--arb); }
 .st-prearb { background: var(--prearb); } .st-class { background: var(--class); }
-.new { font-size: 10px; font-style: normal; color: var(--accent); text-transform: uppercase; }
 
 /* ---------- tooltip & dialog ---------- */
 .tip {
@@ -224,7 +241,7 @@ code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
 
 /* ---------- smaller screens ---------- */
 @media (max-width: 1040px) {
-  .slot.on-field .chip { display: none; }
+  .slot.on-field .chip:not(.cls) { display: none; }
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "board" "roster" "table"; }
   .layout.sport-basketball, .layout.sport-baseball { grid-template-columns: minmax(0, 1fr) 240px; grid-template-areas: "summary summary" "board roster" "table table"; }
 }
@@ -241,7 +258,7 @@ code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
   .lineup-baseball { width: auto; }
   .lineup { position: static; width: auto; margin-top: 10px; }
   .tools { display: inline-flex; }
-  .chip { display: none; }
+  .chip:not(.cls) { display: none; }
   .pform { grid-template-columns: 1fr; }
 }
 

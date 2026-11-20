@@ -14,7 +14,9 @@ Team rosters and depth charts drawn on the playing surface. Open `index.html` in
 - **Move players** by dragging between positions, or use ▲ ▼ on a row (or click a name and choose **Move to**). Every player is on the field or court once, starting at their primary position; dragging to another position moves them. Depth changes apply to the season you're viewing and carry forward to later seasons until you change those.
 - **Starting Lineup** on the field or court names the first player at each position: the nine fielders and the day's starting pitcher for baseball, the five starters for basketball. Click ▾ to hide it.
 - The **roster list** sits beside the field (basketball counts centers as forwards).
-- **Add player** for a potential signing, recruit or transfer. Prospects are shown dashed. Click any name to edit contract or class details, change roster status, or remove the player.
+- **Add player** (or the last row of the table) for a potential signing, recruit or transfer. A dashed outline marks anyone not on the depth chart yet: they sit at the bottom of their primary position until you drag them to a spot or click ✓ to keep them there.
+- **Injured list**: drag a player onto the Injured List panel under the field, or tick the box in their details. Injured players leave the field and don't count against the roster limit (26, 40 or 15). An injury applies to that season only. Drag them back to a position, or click ✓ Activate, to return them; they go back to their old spot.
+- Basketball class years are colored: Fr green, So blue, Jr purple, Sr orange, Gr red. Click any name to edit contract or class details, change roster status, or remove the player.
 - **Contracts & team control / Eligibility by season** shows every player's jersey number and status season by season. Click a season heading to list only that season's players (click it again, or **Show all seasons**, to go back). Type a name in the last row to add a player who joins in the selected season; press Enter to add the next one.
 - **Reset changes** puts the team back to the built-in data.
 
