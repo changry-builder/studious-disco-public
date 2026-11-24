@@ -140,10 +140,23 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .lineup-toggle { border: 0; background: none; color: inherit; cursor: pointer; font-weight: 700; padding: 2px 6px; }
 .lineup.collapsed { width: auto; border-width: 0; }
 /* Baseball: ten names in two columns so the box stays in the corner of the field. */
-.lineup-baseball { width: min(300px, 34%); }
-.lineup-baseball ol { display: grid; grid-template-columns: 1fr 1fr; padding: 3px 0; }
-.lineup-baseball li { padding: 1px 6px; gap: 4px; min-width: 0; font-size: 12px; }
-.lineup-baseball li b { width: 20px; font-size: 13px; }
+.lineup-baseball { width: min(320px, 36%); }
+/* Batting order reads down: 1-5 in the first column, 6-9 and the starting pitcher in the second. */
+.lineup-baseball ol { display: grid; grid-template-rows: repeat(5, auto); grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px 0; }
+.lineup-baseball li { padding: 1px 6px; gap: 4px; min-width: 0; font-size: 12px; position: relative; }
+.lineup-baseball li .pname { flex: 1; }
+.lineup-baseball li b { width: auto; font-size: 11px; color: var(--muted); font-family: var(--f-body); }
+.lineup .spot { width: 16px; flex: none; text-align: right; font-family: var(--f-display); font-weight: 700; color: var(--accent); font-size: 14px; }
+.bo { cursor: grab; border-radius: 3px; }
+.bo:hover { background: rgba(127, 127, 127, 0.15); }
+.bo.dragging { opacity: 0.4; }
+.bo.ins-before { box-shadow: inset 0 2px 0 var(--accent); }
+.bo.ins-after { box-shadow: inset 0 -2px 0 var(--accent); }
+.bo-tools { display: none; gap: 1px; }
+.bo:hover .bo-tools, .bo:focus-within .bo-tools { display: inline-flex; }
+.bo:hover b, .bo:focus-within b { display: none; }
+.bo-tools button { border: 0; background: rgba(127, 127, 127, 0.25); color: inherit; font-size: 8px; line-height: 1; padding: 2px 3px; border-radius: 3px; cursor: pointer; }
+.bo-sp { border-top: 1px solid rgba(127, 127, 127, 0.3); }
 .lineup.collapsed .lineup-toggle { background: var(--accent); color: var(--accent-ink); border-radius: var(--r); padding: 5px 10px; font-family: var(--f-display); font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* ---------- roster list ---------- */
@@ -152,6 +165,11 @@ h1, h2, h3, h4 { font-family: var(--f-display); letter-spacing: 0.02em; margin: 
 .roster h3 span, .roster h4 span { color: var(--muted); font-weight: 500; }
 .roster h4 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 12px 0 4px; }
 .roster ul { list-style: none; margin: 0; padding: 0; }
+/* Sub-groups (catchers, infield, ...) separated by a thin line with a small label. */
+.roster .sub { border-top: 1px solid var(--rule); padding-top: 2px; margin-top: 2px; }
+.roster h4 + .sub { border-top: 0; }
+.sub-label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 2px 6px 0; }
+.prospect-row .pname { color: var(--muted); }
 .rp { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-radius: 4px; cursor: grab; }
 .rp:hover { background: var(--panel-2); }
 .rp.injured .pname { color: var(--muted); }
@@ -183,6 +201,21 @@ thead th { font-family: var(--f-display); font-size: 15px; color: var(--muted); 
 .yr[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 th.num, td.num { width: 1%; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 tr.grp th span { font-weight: 500; }
+/* Tight grid: sub-groups get a vertical label and a heavier line between them. */
+table.grid th, table.grid td { padding: 2px 6px; }
+tr.sub-first > * { border-top: 2px solid var(--muted); }
+th.sub-cell { width: 1%; padding: 0 2px; border-right: 1px solid var(--rule); vertical-align: middle; text-align: center; }
+th.sub-cell span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.cyc { border: 1px dashed transparent; background: none; padding: 1px 2px; border-radius: 4px; cursor: pointer; color: inherit; font: inherit; min-width: 44px; text-align: left; }
+.cyc:hover { border-color: var(--muted); }
+.st-none { color: var(--muted); padding: 0 6px; }
+.yr-head { display: inline-flex; align-items: center; gap: 2px; }
+.yr-hide { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 10px; padding: 2px 3px; border-radius: 3px; opacity: 0.6; }
+.yr-hide:hover { opacity: 1; background: var(--panel-2); color: var(--danger); }
+.chip-btn { border: 1px solid var(--rule); background: var(--panel-2); border-radius: 999px; padding: 0 8px; font-size: 12px; cursor: pointer; }
+td.rs, th.rs { text-align: center; }
+.rs-btn { border: 0; border-radius: 4px; padding: 1px 6px; min-width: 64px; font-size: 11px; font-weight: 700; cursor: pointer; color: #fff; }
+.rs-26 { background: var(--signed); } .rs-40 { background: var(--arb); } .rs-il { background: var(--danger); } .rs-p { background: var(--prearb); }
 .filter-note { margin: 0 0 6px; font-size: 13px; }
 .qa-form { display: none; }
 tfoot td { border-bottom: 0; padding-top: 8px; }
@@ -267,3 +300,7 @@ code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
 .snaps { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .snaps li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; }
 .snaps li div { display: grid; font-size: 13px; }
+
+/* Class colors win over the plain class badge color. */
+.st-class.cls-fr { background: var(--fr); } .st-class.cls-so { background: var(--so); } .st-class.cls-jr { background: var(--jr); }
+.st-class.cls-sr { background: var(--sr); } .st-class.cls-gr { background: var(--gr); }

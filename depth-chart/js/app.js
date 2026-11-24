@@ -46,7 +46,7 @@
   // Edits live in this browser's storage and are applied on top of whatever roster data the site ships,
   // so updating the site never replaces them. Before a new version first runs, every team's edits are
   // also copied into an automatic snapshot that can be restored from "Save / restore".
-  const SITE_VERSION = "2026-11-20.2";
+  const SITE_VERSION = "2026-11-24";
   const SNAPSHOTS_KEPT = 5;
   const TEAM_IDS = Object.keys(BUILTIN);
 
@@ -108,7 +108,9 @@
   }
   function season(t) {
     const s = ui.season[t.id];
-    return t.seasons.includes(s) ? s : t.baseSeason;
+    const shown = M.visibleSeasons(t, stateOf(t));
+    if (shown.includes(s)) return s;
+    return shown.includes(t.baseSeason) ? t.baseSeason : shown[0];
   }
   function view(t) {
     return t.sport === "baseball" ? ui.view : "all";
@@ -172,7 +174,7 @@
   function renderControls(t) {
     const s = season(t);
     const teams = TEAMS_BY_SPORT[ui.sport].map((id) => [id, BUILTIN[id].short]);
-    const seasons = t.seasons.map((y) => [String(y), M.seasonLabel(t, y)]);
+    const seasons = M.visibleSeasons(t, stateOf(t)).map((y) => [String(y), M.seasonLabel(t, y)]);
     $("#controls").innerHTML = `
       <div class="ctl-row">
         ${seg("sport", [["baseball", "⚾ Baseball"], ["basketball", "🏀 Basketball"]], ui.sport)}
@@ -252,18 +254,35 @@
     if (ui.lineupHidden) {
       return `<aside class="lineup collapsed"><button type="button" class="lineup-toggle" data-lineup aria-expanded="false">Starting Lineup ▸</button></aside>`;
     }
-    const baseball = t.sport === "baseball";
-    const rows = M.starters(t, st, s, view(t))
-      .map(({ pos, id }) => {
-        const p = id && playerById(t, id);
-        if (!p) return `<li><b>${esc(pos)}</b><span class="muted">Open</span></li>`;
-        return `<li><b>${esc(pos)}</b><button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${
-          p.num != null && p.num !== "" ? `<i>#${esc(p.num)}</i> ` : ""
-        }${esc(baseball ? shortName(p.name) : p.name)}</button>${baseball ? "" : chipHTML(t, p, s)}</li>`;
-      })
-      .join("");
+    const num = (p) => (p.num != null && p.num !== "" ? `<i>#${esc(p.num)}</i> ` : "");
+    const who = (p, name) =>
+      `<button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${num(p)}${esc(name)}</button>`;
+    let rows;
+    if (t.sport === "baseball") {
+      // Batting order: drag a row (or use ▲ ▼) to change the order. The starting pitcher sits below it.
+      rows = M.battingOrder(t, st, s, view(t))
+        .map(({ spot, pos, id }) => {
+          const p = id && playerById(t, id);
+          return `<li class="bo" draggable="true" data-bpos="${esc(pos)}">
+            <span class="spot">${spot}</span>${p ? who(p, shortName(p.name)) : `<span class="muted">Open</span>`}<b>${esc(pos)}</b>
+            <span class="bo-tools"><button type="button" data-bo="-1" aria-label="Bat ${esc(pos)} earlier">▲</button><button type="button" data-bo="1" aria-label="Bat ${esc(pos)} later">▼</button></span>
+          </li>`;
+        })
+        .join("");
+      const sp = M.starters(t, st, s, view(t)).find((x) => x.pos === "SP");
+      const pitcher = sp && sp.id && playerById(t, sp.id);
+      rows += `<li class="bo-sp"><span class="spot">SP</span>${pitcher ? who(pitcher, shortName(pitcher.name)) : `<span class="muted">Open</span>`}</li>`;
+    } else {
+      rows = M.starters(t, st, s, view(t))
+        .map(({ pos, id }) => {
+          const p = id && playerById(t, id);
+          if (!p) return `<li><b>${esc(pos)}</b><span class="muted">Open</span></li>`;
+          return `<li><b>${esc(pos)}</b>${who(p, p.name)}${chipHTML(t, p, s)}</li>`;
+        })
+        .join("");
+    }
     return `<aside class="lineup lineup-${t.sport}" aria-label="Starting lineup">
-      <header><h3>Starting Lineup</h3><button type="button" class="lineup-toggle" data-lineup aria-expanded="true" title="Hide">▾</button></header>
+      <header><h3>${t.sport === "baseball" ? "Batting Order" : "Starting Lineup"}</h3><button type="button" class="lineup-toggle" data-lineup aria-expanded="true" title="Hide">▾</button></header>
       <ol>${rows}</ol>
     </aside>`;
   }
@@ -308,25 +327,45 @@
     </section>`;
   }
 
+  const GROUP_NAMES = { C: "Catchers", IF: "Infield", OF: "Outfield", SP: "Starters", RP: "Relievers", G: "Guards", F: "Forwards" };
+
+  /**
+   * Players in sections and sub-sections: [[section title or null, [[sub title, players]]]].
+   * Baseball: position players (catchers, infield, outfield) and pitchers (starters, relievers).
+   * Basketball: guards, forwards and centers (the roster list counts centers as forwards).
+   */
   function groupsFor(t, players, { centersAsForwards = false } = {}) {
+    const by = (g) => players.filter((p) => M.groupOf(t, p) === g);
+    const subs = (keys) => keys.map((k) => [t.sport === "basketball" && k === "C" ? "Centers" : GROUP_NAMES[k], by(k)]);
     if (t.sport === "baseball") {
       return [
-        ["Position players", players.filter((p) => !M.isPitcher(p))],
-        ["Pitchers", players.filter((p) => M.isPitcher(p))],
+        ["Position players", subs(["C", "IF", "OF"])],
+        ["Pitchers", subs(["SP", "RP"])],
       ];
     }
-    const g = (pre) => players.filter((p) => (p.pos[0] || "").endsWith(pre));
     if (centersAsForwards) {
       return [
-        ["Guards", g("G")],
-        ["Forwards", players.filter((p) => !(p.pos[0] || "").endsWith("G"))],
+        ["Guards", [[null, by("G")]]],
+        ["Forwards", [[null, players.filter((p) => M.groupOf(t, p) !== "G")]]],
       ];
     }
-    return [
-      ["Guards", g("G")],
-      ["Forwards", g("F")],
-      ["Centers", players.filter((p) => p.pos[0] === "C")],
-    ];
+    return [[null, subs(["G", "F", "C"])]];
+  }
+
+  const ROSTER_LABEL = { "26": "26", "40": "40", IL: "IL", P: "Prospect" };
+
+  function rosterRow(t, s, p, depth, unplaced, hurt) {
+    const slots = M.slotsOf(depth, p.id);
+    const injured = hurt.has(p.id);
+    const tag = t.sport === "baseball" && p.roster === "40" ? `<em class="lvl">40</em>` : "";
+    return `<li class="rp${unplaced.has(p.id) ? " unplaced" : ""}${injured ? " injured" : ""}" draggable="true" data-id="${esc(p.id)}">
+      <button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${
+        p.num != null && p.num !== "" ? `<i>#${esc(p.num)}</i> ` : ""
+      }${esc(p.name)}</button>${tag}
+      <span class="where">${
+        injured ? `<em class="il-tag">IL</em>` : slots.length ? slots.map((x) => `${x.pos}${x.rank}`).join(" ") : "—"
+      }</span>
+    </li>`;
   }
 
   function renderRoster(t) {
@@ -335,103 +374,161 @@
     const players = M.onTeamFor(t, st, s, view(t));
     const { depth, unplaced } = M.layoutFor(t, st, s, view(t));
     const hurt = M.injuredIds(t, st, s);
+    const sections = groupsFor(t, players, { centersAsForwards: t.sport === "basketball" })
+      .map(([title, subs]) => {
+        const count = subs.reduce((n, [, list]) => n + list.length, 0);
+        if (!count) return "";
+        return `<h4>${esc(title)} <span>${count}</span></h4>${subs
+          .filter(([, list]) => list.length)
+          .map(
+            ([sub, list]) =>
+              `<div class="sub">${sub ? `<span class="sub-label">${esc(sub)}</span>` : ""}<ul>${list
+                .map((p) => rosterRow(t, s, p, depth, unplaced, hurt))
+                .join("")}</ul></div>`
+          )
+          .join("")}`;
+      })
+      .join("");
+    // Prospects aren't on the 40-man, so they're listed apart and stay off the field.
+    const prospects =
+      t.sport === "baseball" ? M.allPlayers(t, st).filter((p) => M.level(p) === "P" && M.isOnTeam(t, p, s)) : [];
     $("#roster").innerHTML =
-      `<h3>Roster <span>${esc(M.seasonLabel(t, s))}</span></h3><p class="hint">${
-        `Everyone starts at their primary position. Drag a player to another spot on the ${
-          t.sport === "baseball" ? "field" : "court"
-        } to move them. Outlined players aren't on the depth chart yet.`
-      }</p>` +
-      groupsFor(t, players, { centersAsForwards: t.sport === "basketball" })
-        .filter(([, list]) => list.length)
-        .map(
-          ([title, list]) => `<h4>${esc(title)} <span>${list.length}</span></h4><ul>${list
-            .map((p) => {
-              const slots = M.slotsOf(depth, p.id);
-              const injured = hurt.has(p.id);
-              const tag = t.sport === "baseball" && p.roster === "40" ? `<em class="lvl">40</em>` : "";
-              return `<li class="rp${unplaced.has(p.id) ? " unplaced" : ""}${injured ? " injured" : ""}" draggable="true" data-id="${esc(p.id)}">
-                <button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${
-                  p.num != null && p.num !== "" ? `<i>#${esc(p.num)}</i> ` : ""
-                }${esc(p.name)}</button>${tag}
-                <span class="where">${
-                  injured ? `<em class="il-tag">IL</em>` : slots.length ? slots.map((x) => `${x.pos}${x.rank}`).join(" ") : "—"
-                }</span>
-              </li>`;
-            })
-            .join("")}</ul>`
-        )
-        .join("");
+      `<h3>Roster <span>${esc(M.seasonLabel(t, s))}</span></h3><p class="hint">Everyone starts at their primary position. Drag a player to another spot on the ${
+        t.sport === "baseball" ? "field" : "court"
+      } to move them. Outlined players aren't on the depth chart yet.</p>` +
+      sections +
+      (prospects.length
+        ? `<h4>Prospects <span>${prospects.length}</span></h4><div class="sub"><ul>${prospects
+            .map(
+              (p) => `<li class="rp prospect-row"><button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${
+                p.num != null && p.num !== "" ? `<i>#${esc(p.num)}</i> ` : ""
+              }${esc(p.name)}</button><span class="where">${esc(p.pos[0])}</span></li>`
+            )
+            .join("")}</ul></div>`
+        : "");
   }
 
   function renderTable(t) {
     const s = season(t);
     const st = stateOf(t);
+    const baseball = t.sport === "baseball";
     const only = !!ui.tableOnly[t.id];
-    const players = M.allPlayers(t, st).filter(
-      (p) => M.inRosterView(t, p, view(t)) && (only ? M.isOnTeam(t, p, s) : t.seasons.some((y) => M.isOnTeam(t, p, y)))
-    );
-    const cols = t.seasons.length + 3;
-    const hurt = M.injuredIds(t, st, s);
-    const head = t.seasons
+    const seasons = M.visibleSeasons(t, st);
+    const hiddenSeasons = t.seasons.filter((y) => !seasons.includes(y));
+    // Every roster level shows here (so a status can be changed); players set by hand stay even if blanked.
+    const players = M.allPlayers(t, st).filter((p) => {
+      if (only) return M.isOnTeam(t, p, s);
+      if (M.hiddenWithSeasons(t, st, p)) return false;
+      return seasons.some((y) => M.isOnTeam(t, p, y)) || Object.keys(p.seasons || {}).length > 0;
+    });
+    const cols = seasons.length + (baseball ? 5 : 4);
+    const head = seasons
       .map(
         (y) =>
-          `<th class="${y === s ? "cur" : ""}" scope="col"><button type="button" class="yr" data-tyear="${y}" aria-pressed="${only && y === s}" title="Show only players on the team in ${esc(
-            M.seasonLabel(t, y)
-          )}">${esc(M.seasonLabel(t, y))}</button></th>`
+          `<th class="${y === s ? "cur" : ""}" scope="col"><span class="yr-head"><button type="button" class="yr" data-tyear="${y}" aria-pressed="${
+            only && y === s
+          }" title="Show only players on the team in ${esc(M.seasonLabel(t, y))}">${esc(M.seasonLabel(t, y))}</button>${
+            seasons.length > 1
+              ? `<button type="button" class="yr-hide" data-hide="${y}" title="Hide ${esc(M.seasonLabel(t, y))} and players whose last season it was" aria-label="Hide ${esc(
+                  M.seasonLabel(t, y)
+                )}">✕</button>`
+              : ""
+          }</span></th>`
       )
       .join("");
+    const cell = (p, y) => {
+      const x = M.statusFor(t, p, y);
+      const cls = y === s ? "cur" : "";
+      if (!baseball) {
+        return `<td class="${cls}">${x ? `<span class="${stClass(x)}" title="${esc(x.label)}">${esc(x.short)}</span>` : ""}</td>`;
+      }
+      const next = M.STATUS_KINDS[M.nextStatus(t, p, y)];
+      return `<td class="${cls}"><button type="button" class="cyc" data-cycle="${esc(p.id)}" data-year="${y}" title="${esc(
+        `${M.seasonLabel(t, y)}: ${x ? x.label : "not on the team"}. Click for ${next ? next.label : "not on the team"}.`
+      )}">${x ? `<span class="${stClass(x)}">${esc(x.short)}</span>` : `<span class="st-none">·</span>`}</button></td>`;
+    };
+    const row = (p, lead) => {
+      const rs = M.rosterStatus(t, st, p, s);
+      return `<tr>${lead}
+        <td class="num">${p.num != null && p.num !== "" ? esc(p.num) : ""}</td>
+        <th scope="row"><button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${esc(p.name)}</button>${
+          !baseball && rs === "IL" && M.isOnTeam(t, p, s) ? ` <em class="il-tag" title="Injured list in ${esc(M.seasonLabel(t, s))}">IL</em>` : ""
+        }</th>
+        <td class="pos">${esc(p.pos.join("/"))}</td>
+        ${
+          baseball
+            ? `<td class="rs"><button type="button" class="rs-btn rs-${rs.toLowerCase()}" data-roster="${esc(p.id)}" title="Roster status in ${esc(
+                M.seasonLabel(t, s)
+              )}. Click to change: 26-man, 40-man, injured list, prospect.">${ROSTER_LABEL[rs]}</button></td>`
+            : ""
+        }
+        ${seasons.map((y) => cell(p, y)).join("")}
+      </tr>`;
+    };
     const rows = groupsFor(t, players)
-      .filter(([, list]) => list.length)
-      .map(
-        ([title, list]) =>
-          `<tr class="grp"><th colspan="${cols}" scope="rowgroup">${esc(title)} <span>${list.length}</span></th></tr>` +
-          list
-            .map(
-              (p) => `<tr>
-                <td class="num">${p.num != null && p.num !== "" ? esc(p.num) : ""}</td>
-                <th scope="row"><button type="button" class="pname" data-open="${esc(p.id)}" data-tip="${esc(p.id)}">${esc(p.name)}</button>${
-                  hurt.has(p.id) && M.isOnTeam(t, p, s) ? ` <em class="il-tag" title="Injured list in ${esc(M.seasonLabel(t, s))}">IL</em>` : ""
-                }</th>
-                <td class="pos">${esc(p.pos.join("/"))}</td>
-                ${t.seasons
-                  .map((y) => {
-                    const x = M.statusFor(t, p, y);
-                    return `<td class="${y === s ? "cur" : ""}">${x ? `<span class="${stClass(x)}" title="${esc(x.label)}">${esc(x.short)}</span>` : ""}</td>`;
-                  })
-                  .join("")}
-              </tr>`
+      .map(([title, subs]) => {
+        const count = subs.reduce((n, [, list]) => n + list.length, 0);
+        if (!count) return "";
+        const head = title ? `<tr class="grp"><th colspan="${cols}" scope="rowgroup">${esc(title)} <span>${count}</span></th></tr>` : "";
+        return (
+          head +
+          subs
+            .filter(([, list]) => list.length)
+            .map(([sub, list]) =>
+              list
+                .map((p, i) =>
+                  row(
+                    p,
+                    i === 0
+                      ? `<th class="sub-cell" rowspan="${list.length}" scope="rowgroup"><span>${esc(sub)}</span></th>`
+                      : ""
+                  ).replace("<tr>", i === 0 ? '<tr class="sub-first">' : "<tr>")
+                )
+                .join("")
             )
             .join("")
-      )
+        );
+      })
       .join("");
-    const legend =
-      t.sport === "baseball"
-        ? `<span class="st st-signed">Signed</span> guaranteed deal · <span class="st st-option">Option</span> club option · <span class="st st-arb">Arb</span> arbitration · <span class="st st-prearb">Pre-arb</span> pre-arbitration · * after an opt-out`
-        : `Class by season, assuming every player stays five years: ${[1, 2, 3, 4, 5]
-            .map((y) => `<span class="st st-class cls-${M.CLASS_SHORT[y].toLowerCase()}">${M.CLASS_SHORT[y]}</span>`)
-            .join(" ")}`;
+    const legend = baseball
+      ? `Click a season to change it: <span class="st st-prearb">Pre-arb</span> → <span class="st st-arb">Arb</span> → <span class="st st-signed">Signed</span> → <span class="st st-option">Option</span> → <span class="st-none">·</span> not on the team. * after an opt-out.`
+      : `Class by season, assuming every player stays five years: ${[1, 2, 3, 4, 5]
+          .map((y) => `<span class="st st-class cls-${M.CLASS_SHORT[y].toLowerCase()}">${M.CLASS_SHORT[y]}</span>`)
+          .join(" ")}`;
     const filterNote = only
       ? `<p class="filter-note">Showing the ${players.length} players on the team in <b>${esc(M.seasonLabel(t, s))}</b>. <button type="button" class="link" data-tall>Show all seasons</button></p>`
-      : `<p class="filter-note muted">Click a season to see only that season's players.</p>`;
+      : `<p class="filter-note muted">Click a season heading to see only that season's players; ✕ hides a season.</p>`;
+    const hiddenNote = hiddenSeasons.length
+      ? `<p class="filter-note">Hidden: ${hiddenSeasons
+          .map((y) => `<button type="button" class="chip-btn" data-unhide="${y}" title="Show ${esc(M.seasonLabel(t, y))} again">${esc(M.seasonLabel(t, y))} ✕</button>`)
+          .join(" ")}</p>`
+      : "";
     const posOpts = M.POSITIONS[t.sport].map((x) => `<option value="${x}">${x}</option>`).join("");
-    const extra =
-      t.sport === "basketball"
-        ? `<label class="qa-lbl">Class in ${esc(M.seasonLabel(t, s))} <select form="qa" name="year">${[1, 2, 3, 4, 5]
-            .map((y) => `<option value="${y}">${M.CLASS_NAMES[y]}</option>`)
-            .join("")}</select></label>`
-        : `<label class="qa-lbl">Signed through <select form="qa" name="guaranteed">${Array.from({ length: 12 }, (_, i) => s + i)
-            .map((y) => `<option value="${y}">${y}</option>`)
-            .join("")}</select></label>`;
+    const extra = !baseball
+      ? `<label class="qa-lbl">Class in ${esc(M.seasonLabel(t, s))} <select form="qa" name="year">${[1, 2, 3, 4, 5]
+          .map((y) => `<option value="${y}">${M.CLASS_NAMES[y]}</option>`)
+          .join("")}</select></label>`
+      : `<label class="qa-lbl">Through <select form="qa" name="through">${Array.from({ length: 12 }, (_, i) => s + i)
+          .map((y) => `<option value="${y}">${y}</option>`)
+          .join("")}</select></label>`;
     const quick = `<tfoot><tr class="qa-row">
+        <td></td>
         <td><input form="qa" name="num" inputmode="numeric" maxlength="3" placeholder="#" aria-label="Jersey number"></td>
-        <td><input form="qa" name="name" id="qa-name" maxlength="60" placeholder="+ Add a ${t.sport === "baseball" ? "signing" : "recruit"}…" aria-label="Player name" required autocomplete="off"></td>
+        <td><input form="qa" name="name" id="qa-name" maxlength="60" placeholder="+ Add a ${baseball ? "player" : "recruit"}…" aria-label="Player name" required autocomplete="off"></td>
         <td><select form="qa" name="pos" aria-label="Position">${posOpts}</select></td>
-        <td colspan="${t.seasons.length}"><div class="qa-more">${extra}<span class="muted">joins in ${esc(M.seasonLabel(t, s))}</span><button type="submit" form="qa" class="btn primary">Add</button></div></td>
+        ${
+          baseball
+            ? `<td><select form="qa" name="roster" aria-label="Roster status"><option value="26">26</option><option value="40">40</option><option value="P">Prospect</option></select></td>`
+            : ""
+        }
+        <td colspan="${seasons.length}"><div class="qa-more">${extra}<span class="muted">joins in ${esc(M.seasonLabel(t, s))}</span><button type="submit" form="qa" class="btn primary">Add</button></div></td>
       </tr></tfoot>`;
-    $("#table").innerHTML = `<h3>${t.sport === "baseball" ? "Contracts &amp; team control" : "Eligibility by season"}</h3>
-      <p class="hint">${legend}</p>${filterNote}
+    $("#table").innerHTML = `<h3>${baseball ? "Contracts &amp; team control" : "Eligibility by season"}</h3>
+      <p class="hint">${legend}</p>${filterNote}${hiddenNote}
       <form id="qa" class="qa-form"></form>
-      <div class="table-scroll"><table><thead><tr><th scope="col" class="num">#</th><th scope="col">Player</th><th scope="col">Pos</th>${head}</tr></thead><tbody>${rows}</tbody>${quick}</table></div>`;
+      <div class="table-scroll"><table class="grid"><thead><tr><th class="sub-cell"></th><th scope="col" class="num">#</th><th scope="col">Player</th><th scope="col">Pos</th>${
+        baseball ? `<th scope="col" class="rs" title="Roster status in ${esc(M.seasonLabel(t, s))}">Status</th>` : ""
+      }${head}</tr></thead><tbody>${rows}</tbody>${quick}</table></div>`;
   }
 
   document.addEventListener("submit", (e) => {
@@ -445,7 +542,12 @@
     const num = String(f.get("num") || "").trim();
     const fields = { name, num: num === "" ? null : num, pos: [f.get("pos")], firstSeason: s };
     if (t.sport === "basketball") fields.year = Number(f.get("year"));
-    else Object.assign(fields, { guaranteed: Number(f.get("guaranteed")), roster: "26" });
+    else {
+      const roster = f.get("roster");
+      const through = Number(f.get("through"));
+      // A prospect is under team control (pre-arb); anyone else gets a signed deal through that season.
+      Object.assign(fields, roster === "P" ? { control: through } : { guaranteed: through }, { roster });
+    }
     setState(t, M.addPlayer(t, stateOf(t), fields, s).state);
     const input = $("#qa-name");
     if (input) input.focus();
@@ -499,6 +601,31 @@
       hideTip();
       return render();
     }
+    const cyc = e.target.closest("[data-cycle]");
+    if (cyc) {
+      const p = playerById(t, cyc.dataset.cycle);
+      const y = Number(cyc.dataset.year);
+      if (p) setState(t, M.setSeasonStatus(t, stateOf(t), p.id, y, M.nextStatus(t, p, y)));
+      return;
+    }
+    const rs = e.target.closest("[data-roster]");
+    if (rs) return setState(t, M.cycleRoster(t, stateOf(t), season(t), rs.dataset.roster));
+    const hide = e.target.closest("[data-hide]");
+    if (hide) return setState(t, M.setHidden(t, stateOf(t), Number(hide.dataset.hide), true));
+    const unhide = e.target.closest("[data-unhide]");
+    if (unhide) return setState(t, M.setHidden(t, stateOf(t), Number(unhide.dataset.unhide), false));
+    const bo = e.target.closest("[data-bo]");
+    if (bo) {
+      const s = season(t);
+      const order = M.battingOrder(t, stateOf(t), s, view(t)).map((x) => x.pos);
+      const pos = bo.closest(".bo").dataset.bpos;
+      const i = order.indexOf(pos);
+      const dir = Number(bo.dataset.bo);
+      if (i + dir < 0 || i + dir >= order.length) return;
+      // Up: before the one above. Down: before the one two below (or to the end).
+      const before = dir < 0 ? order[i - 1] : order[i + 2] || null;
+      return setState(t, M.moveInOrder(t, stateOf(t), s, pos, before));
+    }
     const yr = e.target.closest("[data-tyear]");
     if (yr) {
       const y = Number(yr.dataset.tyear);
@@ -551,7 +678,61 @@
 
   // ---------- drag and drop ----------
   let drag = null;
+  // Batting order rows drag among themselves.
+  let boDrag = null;
   document.addEventListener("dragstart", (e) => {
+    const row = e.target.closest(".bo");
+    if (!row) return;
+    boDrag = row.dataset.bpos;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", boDrag);
+    row.classList.add("dragging");
+    hideTip();
+  });
+  function boTarget(e) {
+    const list = e.target.closest(".lineup ol");
+    if (!list) return null;
+    const rows = [...list.querySelectorAll(".bo")].filter((r) => r.dataset.bpos !== boDrag);
+    for (const r of rows) {
+      const box = r.getBoundingClientRect();
+      // Two columns: compare within the column under the pointer.
+      if (e.clientX >= box.left && e.clientX <= box.right && e.clientY < box.top + box.height / 2) return { before: r.dataset.bpos, mark: [r, "ins-before"] };
+    }
+    const sameCol = rows.filter((r) => {
+      const box = r.getBoundingClientRect();
+      return e.clientX >= box.left && e.clientX <= box.right;
+    });
+    const last = sameCol[sameCol.length - 1];
+    if (!last) return { before: null, mark: null };
+    const order = [...list.querySelectorAll(".bo")].map((r) => r.dataset.bpos).filter((x) => x !== boDrag);
+    const next = order[order.indexOf(last.dataset.bpos) + 1] || null;
+    return { before: next, mark: [last, "ins-after"] };
+  }
+  document.addEventListener("dragover", (e) => {
+    if (!boDrag) return;
+    const tg = boTarget(e);
+    if (!tg) return;
+    e.preventDefault();
+    clearMarks();
+    if (tg.mark) tg.mark[0].classList.add(tg.mark[1]);
+  });
+  document.addEventListener("drop", (e) => {
+    if (!boDrag) return;
+    const tg = boTarget(e);
+    e.preventDefault();
+    clearMarks();
+    const t = team();
+    if (tg) setState(t, M.moveInOrder(t, stateOf(t), season(t), boDrag, tg.before));
+    boDrag = null;
+  });
+  document.addEventListener("dragend", (e) => {
+    const row = e.target.closest(".bo");
+    if (row) row.classList.remove("dragging");
+    boDrag = null;
+  });
+
+  document.addEventListener("dragstart", (e) => {
+    if (boDrag) return;
     const item = e.target.closest(".dp, .rp, .ilp");
     if (!item) return;
     drag = { id: item.dataset.id };
@@ -681,8 +862,9 @@
           ? `<div class="row"><label>Roster status <select id="lvl">${[
               ["26", "Active (26-man)"],
               ["40", "40-man (optioned / minors)"],
+              ["P", "Prospect (not on the 40-man)"],
             ]
-              .map(([v, l]) => `<option value="${v}"${(p.roster === "40" ? "40" : "26") === v ? " selected" : ""}>${l}</option>`)
+              .map(([v, l]) => `<option value="${v}"${M.level(p) === v ? " selected" : ""}>${l}</option>`)
               .join("")}</select></label></div>`
           : ""
       }
@@ -763,8 +945,8 @@
         <label>First season with team <select name="firstSeason">${seasonOpts(first)}</select></label>
         ${
           baseball
-            ? `<label>Roster status <select name="roster">${[["26", "Active (26-man)"], ["40", "40-man"]]
-                .map(([v, l]) => `<option value="${v}"${(p && p.roster === "40" ? "40" : "26") === v ? " selected" : ""}>${l}</option>`)
+            ? `<label>Roster status <select name="roster">${[["26", "Active (26-man)"], ["40", "40-man"], ["P", "Prospect"]]
+                .map(([v, l]) => `<option value="${v}"${(p ? M.level(p) : "26") === v ? " selected" : ""}>${l}</option>`)
                 .join("")}</select></label>
               <label>Guaranteed through <select name="guaranteed">${yearOptions(t.baseSeason, t.baseSeason + 15, p ? p.guaranteed : s, "No guaranteed deal")}</select></label>
               <label>Team control through <select name="control">${yearOptions(t.baseSeason, t.baseSeason + 15, p ? p.control : "", "Same as deal")}</select></label>

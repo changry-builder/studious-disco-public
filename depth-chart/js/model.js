@@ -31,16 +31,18 @@
    *   - never rename or reuse a player id (tests/depth-chart.test.js pins the current ones);
    *   - when the saved shape has to change, bump SCHEMA and add a step to MIGRATIONS; never drop data.
    */
-  const SCHEMA = 2;
+  const SCHEMA = 3;
   const MIGRATIONS = {
     // 0 -> 1: the first release saved the same fields without a version number.
     0: (s) => s,
     // 1 -> 2: injured lists by season ({ season: [id] }). Older edits had none.
     1: (s) => Object.assign({ il: {} }, s),
+    // 2 -> 3: batting orders by season ({ season: [position] }) and hidden seasons ([season]).
+    2: (s) => Object.assign({ order: {}, hidden: [] }, s),
   };
 
   function emptyState() {
-    return { v: SCHEMA, added: [], edits: {}, removed: [], depth: {}, il: {} };
+    return { v: SCHEMA, added: [], edits: {}, removed: [], depth: {}, il: {}, order: {}, hidden: [] };
   }
 
   /** Bring saved edits from any earlier version up to date. Unknown fields are kept. */
@@ -56,6 +58,8 @@
       removed: Array.isArray(cur.removed) ? cur.removed : e.removed,
       depth: cur.depth && typeof cur.depth === "object" ? cur.depth : e.depth,
       il: cur.il && typeof cur.il === "object" ? cur.il : e.il,
+      order: cur.order && typeof cur.order === "object" ? cur.order : e.order,
+      hidden: Array.isArray(cur.hidden) ? cur.hidden : e.hidden,
     });
   }
 
@@ -77,8 +81,21 @@
     return p.firstSeason != null ? p.firstSeason : team.baseSeason;
   }
 
-  /** Last season the player belongs to the team, or Infinity. */
-  function lastSeason(team, p) {
+  /*
+   * Baseball status by season. It comes from the contract fields (guaranteed, control, options), unless the
+   * user set a season by hand: `p.seasons = { 2027: "arb" | "prearb" | "signed" | "option" | "none" }`.
+   */
+  const STATUS_KINDS = {
+    prearb: { kind: "prearb", short: "Pre-arb", label: "Pre-arbitration" },
+    arb: { kind: "arb", short: "Arb", label: "Arbitration-eligible" },
+    signed: { kind: "signed", short: "Signed", label: "Signed" },
+    option: { kind: "option", short: "Option", label: "Club option" },
+  };
+  /** Clicking a season cell steps through these; "none" means not on the team. */
+  const STATUS_CYCLE = ["prearb", "arb", "signed", "option", "none"];
+
+  /** Last season from the contract fields alone. */
+  function contractLast(team, p) {
     let last;
     if (team.sport === "basketball") {
       last = firstSeason(team, p) + (MAX_COLLEGE_YEARS - (p.year || 1));
@@ -91,8 +108,51 @@
     return last;
   }
 
+  function contractStatus(team, p, season) {
+    if (season < firstSeason(team, p) || season > contractLast(team, p)) return null;
+    if (p.guaranteed && season <= p.guaranteed) {
+      const optOut = (p.optOuts || []).some((y) => y < season);
+      return optOut ? { kind: "signed", short: "Signed*", label: "Signed (after an opt-out year)" } : STATUS_KINDS.signed;
+    }
+    if ((p.options || []).includes(season)) return STATUS_KINDS.option;
+    // Team control past the deal: the last three seasons are arbitration years.
+    if (p.control && season <= p.control) return season > p.control - 3 ? STATUS_KINDS.arb : STATUS_KINDS.prearb;
+    return STATUS_KINDS.signed;
+  }
+
+  function baseballStatus(team, p, season) {
+    const set = (p.seasons || {})[season];
+    if (set) return set === "none" ? null : STATUS_KINDS[set] || null;
+    return contractStatus(team, p, season);
+  }
+
+  /** Last season the player belongs to the team. */
+  function lastSeason(team, p) {
+    const last = contractLast(team, p);
+    if (team.sport === "basketball") return last;
+    const set = Object.keys(p.seasons || {}).map(Number);
+    const from = Math.min(firstSeason(team, p), ...set);
+    const to = Math.max(last, ...set);
+    for (let y = to; y >= from; y--) if (baseballStatus(team, p, y)) return y;
+    return last;
+  }
+
   function isOnTeam(team, p, season) {
+    if (team.sport === "baseball") return !!baseballStatus(team, p, season);
     return season >= firstSeason(team, p) && season <= lastSeason(team, p);
+  }
+
+  /** The next status when a season cell is clicked (baseball). */
+  function nextStatus(team, p, season) {
+    const cur = baseballStatus(team, p, season);
+    const i = STATUS_CYCLE.indexOf(cur ? cur.kind : "none");
+    return STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length];
+  }
+
+  function setSeasonStatus(team, state, id, season, kind) {
+    const p = allPlayers(team, state).find((x) => x.id === id);
+    if (!p) return state;
+    return editPlayer(team, state, id, { seasons: Object.assign({}, p.seasons || {}, { [season]: kind }) });
   }
 
   function classYear(team, p, season) {
@@ -106,18 +166,7 @@
       const y = classYear(team, p, season);
       return { kind: "class", short: CLASS_SHORT[y], label: CLASS_NAMES[y], year: y };
     }
-    if (p.guaranteed && season <= p.guaranteed) {
-      const optOut = (p.optOuts || []).some((y) => y < season);
-      return { kind: "signed", short: optOut ? "Signed*" : "Signed", label: optOut ? "Signed (after an opt-out year)" : "Signed" };
-    }
-    if ((p.options || []).includes(season)) return { kind: "option", short: "Option", label: "Club option" };
-    // Team control past the deal: the last three seasons are arbitration years.
-    if (p.control && season <= p.control) {
-      return season > p.control - 3
-        ? { kind: "arb", short: "Arb", label: "Arbitration-eligible" }
-        : { kind: "prearb", short: "Pre-arb", label: "Pre-arbitration" };
-    }
-    return { kind: "signed", short: "Signed", label: "Signed" };
+    return baseballStatus(team, p, season);
   }
 
   /** The hover text: free-agency year (baseball) or class status (basketball). */
@@ -135,7 +184,8 @@
       lines.push(`Free agent after ${last} (FA ${last + 1})`);
       const st = statusFor(team, p, season);
       if (st) lines.push(`${season}: ${st.label}`);
-      if ((p.options || []).length) lines.push(`Club option: ${p.options.join(", ")}`);
+      const opts = team.seasons.filter((y) => (baseballStatus(team, p, y) || {}).kind === "option");
+      if (opts.length) lines.push(`Club option: ${opts.join(", ")}`);
       if ((p.optOuts || []).length) lines.push(`Can opt out after ${p.optOuts.join(", ")}`);
       const hand = [p.bats && `Bats ${p.bats}`, p.throws && `Throws ${p.throws}`].filter(Boolean).join(" / ");
       if (hand) lines.push(hand);
@@ -145,11 +195,20 @@
     return lines;
   }
 
-  /** Roster filter for baseball: "26" active roster only, "40" the whole 40-man. */
+  /**
+   * Roster level (baseball): "26" active, "40" on the 40-man but not active, "P" a prospect not yet on the
+   * 40-man. ("IL" was a level before injuries were tracked by season; those players belong to the 26.)
+   */
+  function level(p) {
+    return p.roster === "40" || p.roster === "P" ? p.roster : "26";
+  }
+
+  /** Roster filter for baseball: "26" the active roster, "40" the whole 40-man, "all" includes prospects. */
   function inRosterView(team, p, view) {
-    if (team.sport !== "baseball" || view !== "26") return true;
-    // "IL" was a roster level before injuries were tracked by season; those players belong to the 26.
-    return (p.roster || "26") !== "40";
+    if (team.sport !== "baseball" || view === "all") return true;
+    const lv = level(p);
+    if (view === "26") return lv === "26";
+    return lv !== "P";
   }
 
   /**
@@ -184,6 +243,22 @@
     return onTeamFor(team, state, season, view).filter((p) => !hurt.has(p.id));
   }
 
+  /** What the roster-status column shows for a season: "26", "40", "IL" or "P". */
+  function rosterStatus(team, state, p, season) {
+    return injuredIds(team, state, season).has(p.id) ? "IL" : level(p);
+  }
+
+  /** Click order for the roster-status column: 26-man, 40-man, injured list, prospect, back to 26-man. */
+  function cycleRoster(team, state, season, id) {
+    const p = allPlayers(team, state).find((x) => x.id === id);
+    if (!p) return state;
+    const cur = rosterStatus(team, state, p, season);
+    if (cur === "26") return editPlayer(team, state, id, { roster: "40" });
+    if (cur === "40") return setInjured(team, state, season, id, true);
+    if (cur === "IL") return editPlayer(team, setInjured(team, state, season, id, false), id, { roster: "P" });
+    return editPlayer(team, state, id, { roster: "26" });
+  }
+
   /** Players on the injured list that season (any roster level). */
   function injuredFor(team, state, season) {
     const hurt = injuredIds(team, state, season);
@@ -196,10 +271,15 @@
     return d;
   }
 
+  /** The value saved for a season, else for the nearest earlier season, else undefined. */
+  function carried(map, season) {
+    const keys = Object.keys(map || {}).map(Number).filter((y) => y <= season).sort((a, b) => b - a);
+    return keys.length ? map[keys[0]] : undefined;
+  }
+
   /** The stored depth for a season, else the nearest earlier stored season, else the seed. Unfiltered. */
   function rawDepth(team, state, season) {
-    const stored = Object.keys(state.depth).map(Number).filter((y) => y <= season).sort((a, b) => b - a);
-    const src = stored.length ? state.depth[stored[0]] : seedDepth(team);
+    const src = carried(state.depth, season) || seedDepth(team);
     const d = {};
     for (const pos of POSITIONS[team.sport]) d[pos] = (src[pos] || []).slice();
     return d;
@@ -337,8 +417,67 @@
     return LINEUP[team.sport].map((pos) => ({ pos, id: (d[pos] || [])[0] || null }));
   }
 
+  /** A batting order: lineup spots 1-9, each the current starter at a position. */
+  const BATTING_POS = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH"];
+
+  /** Saved as positions, so a new starter at a position bats in that position's spot. */
+  function battingOrder(team, state, season, view) {
+    const starter = new Map(starters(team, state, season, view).map((x) => [x.pos, x.id]));
+    const saved = carried(state.order, season) || team.lineup || BATTING_POS;
+    const order = saved.filter((pos, i) => BATTING_POS.includes(pos) && saved.indexOf(pos) === i);
+    for (const pos of BATTING_POS) if (!order.includes(pos)) order.push(pos);
+    return order.map((pos, i) => ({ spot: i + 1, pos, id: starter.get(pos) || null }));
+  }
+
+  /** Move a position's spot in the order to just before another's (or to the end). */
+  function moveInOrder(team, state, season, pos, beforePos) {
+    const order = battingOrder(team, state, season, "all").map((x) => x.pos).filter((x) => x !== pos);
+    const i = beforePos ? order.indexOf(beforePos) : -1;
+    if (i === -1) order.push(pos);
+    else order.splice(i, 0, pos);
+    return Object.assign({}, state, { order: Object.assign({}, state.order || {}, { [season]: order }) });
+  }
+
+  /** Seasons shown, and hiding one. At least one season always stays visible. */
+  function visibleSeasons(team, state) {
+    const hidden = new Set(state.hidden || []);
+    const shown = team.seasons.filter((y) => !hidden.has(y));
+    return shown.length ? shown : [team.seasons[team.seasons.length - 1]];
+  }
+
+  function setHidden(team, state, season, on) {
+    const hidden = new Set(state.hidden || []);
+    if (on) hidden.add(season);
+    else hidden.delete(season);
+    const next = Object.assign({}, state, { hidden: [...hidden].sort() });
+    return visibleSeasons(team, next).some((y) => !hidden.has(y)) ? next : state;
+  }
+
+  /** Whether a player is hidden along with a season: their last season was hidden, or none they play is shown. */
+  function hiddenWithSeasons(team, state, p) {
+    const hidden = new Set(state.hidden || []);
+    if (!hidden.size) return false;
+    if (hidden.has(lastSeason(team, p))) return true;
+    return !visibleSeasons(team, state).some((y) => isOnTeam(team, p, y));
+  }
+
   function isPitcher(p) {
-    return (p.pos || []).some((x) => PITCHER_POS.has(x));
+    return PITCHER_POS.has((p.pos || [])[0]);
+  }
+
+  /**
+   * Position group for rosters and tables. Baseball: C, IF, OF, SP, RP (a DH counts at his next position).
+   * Basketball: G, F, C.
+   */
+  function groupOf(team, p) {
+    const pos = p.pos || [];
+    if (team.sport === "basketball") return (pos[0] || "").endsWith("G") ? "G" : pos[0] === "C" ? "C" : "F";
+    if (pos[0] === "SP") return "SP";
+    if (isPitcher(p)) return "RP";
+    const field = pos[0] === "DH" ? pos.find((x) => x !== "DH") || "1B" : pos[0];
+    if (field === "C") return "C";
+    if (["LF", "CF", "RF"].includes(field)) return "OF";
+    return "IF";
   }
 
   const Model = {
@@ -347,6 +486,8 @@
     statusFor, tooltipFor, inRosterView, playersFor, onTeamFor, injuredIds, setInjured, injuredFor, seedDepth,
     rawDepth, placedDepth, layoutFor, depthFor, unplacedFor, moveInDepth,
     shiftInDepth, addPlayer, editPlayer, removePlayer, slotsOf, isPitcher, starters, LINEUP, SCHEMA,
+    STATUS_KINDS, STATUS_CYCLE, nextStatus, setSeasonStatus, level, rosterStatus, cycleRoster,
+    BATTING_POS, battingOrder, moveInOrder, visibleSeasons, setHidden, hiddenWithSeasons, groupOf,
   };
   root.DC_Model = Model;
   if (typeof module !== "undefined") module.exports = Model;

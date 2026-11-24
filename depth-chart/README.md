@@ -12,12 +12,16 @@ Team rosters and depth charts drawn on the playing surface. Open `index.html` in
   - UCLA: every player stays five years, so a senior returns as a fifth-year graduate and a graduate leaves. Set **Leaves early after** on a player to change that (draft, transfer).
 - **Hover a name** for free agency (baseball) or class (basketball) in the season you're viewing. Tap a name on a phone.
 - **Move players** by dragging between positions, or use ▲ ▼ on a row (or click a name and choose **Move to**). Every player is on the field or court once, starting at their primary position; dragging to another position moves them. Depth changes apply to the season you're viewing and carry forward to later seasons until you change those.
-- **Starting Lineup** on the field or court names the first player at each position: the nine fielders and the day's starting pitcher for baseball, the five starters for basketball. Click ▾ to hide it.
-- The **roster list** sits beside the field (basketball counts centers as forwards).
+- **Batting Order** (baseball) on the field lists spots 1-9 and the starting pitcher. Drag a row, or use ▲ ▼, to change the order. The order is kept by position, so a new starter at a position bats in that spot. **Starting Lineup** (basketball) names the five starters. Click ▾ to hide either.
+- The **roster list** sits beside the field. Baseball splits it into catchers, infield and outfield, then starters and relievers, with prospects listed apart. Basketball counts centers as forwards.
 - **Add player** (or the last row of the table) for a potential signing, recruit or transfer. A dashed outline marks anyone not on the depth chart yet: they sit at the bottom of their primary position until you drag them to a spot or click ✓ to keep them there.
 - **Injured list**: drag a player onto the Injured List panel under the field, or tick the box in their details. Injured players leave the field and don't count against the roster limit (26, 40 or 15). An injury applies to that season only. Drag them back to a position, or click ✓ Activate, to return them; they go back to their old spot.
 - Basketball class years are colored: Fr green, So blue, Jr purple, Sr orange, Gr red. Click any name to edit contract or class details, change roster status, or remove the player.
-- **Contracts & team control / Eligibility by season** shows every player's jersey number and status season by season. Click a season heading to list only that season's players (click it again, or **Show all seasons**, to go back). Type a name in the last row to add a player who joins in the selected season; press Enter to add the next one.
+- **Contracts & team control / Eligibility by season** groups players the same way, with jersey numbers.
+  - Baseball: click a season cell to step through Pre-arb → Arb → Signed → Option → blank (not on the team). Your choice overrides the contract fields for that season.
+  - Baseball **Status** column: click to step through 26-man → 40-man → IL → Prospect for the selected season. Prospects aren't on the 40-man, so they stay off the field and out of the counts.
+  - Click a season heading to list only that season's players. ✕ hides a season, along with players whose last season it was. Use the chips above the table to show it again.
+  - The last row adds a player who joins in the selected season. Press Enter to add the next one.
 - **Reset changes** puts the team back to the built-in data.
 
 ## Your edits and site updates
