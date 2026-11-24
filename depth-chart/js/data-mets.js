@@ -20,6 +20,8 @@
     baseSeason: 2026,
     seasons: [2026, 2027, 2028, 2029, 2030, 2031],
     asOf: "2026 Opening Day roster (March 26, 2026)",
+    // Batting order by position: the starter at each position bats in that spot.
+    lineup: ["SS", "LF", "3B", "1B", "DH", "CF", "2B", "C", "RF"],
     players: [
       // Starting pitchers
       P("peralta", "Freddy Peralta", ["SP"], { throws: "R", guaranteed: 2026 }),

@@ -104,6 +104,8 @@ test("saved edits from the first release still load", () => {
   const s = M.normalizeState(old);
   assert.equal(s.v, M.SCHEMA);
   assert.deepEqual(s.il, {}, "injured lists start empty");
+  assert.deepEqual(s.order, {});
+  assert.deepEqual(s.hidden, []);
   assert.equal(s.extra, 1, "unknown fields are kept");
   assert.deepEqual(s.added, old.added);
   const ps = M.playersFor(METS, s, 2026, "40");
@@ -135,6 +137,66 @@ test("the injured list is per season and doesn't count against the roster", () =
 
 test("nobody needs placing on the opening rosters", () => {
   for (const t of TEAMS) assert.equal(M.unplacedFor(t, S0, t.baseSeason, "40").size, 0, t.id);
+});
+
+test("the batting order is spots 1-9, saved by position", () => {
+  const order = M.battingOrder(METS, S0, 2026, "26");
+  assert.deepEqual(order.map((x) => x.id), ["lindor", "soto", "bichette", "polanco", "vientos", "robert", "semien", "alvarez", "benge"]);
+  // Move Benge's spot (RF) to lead off.
+  let s = M.moveInOrder(METS, S0, 2026, "RF", "SS");
+  assert.equal(M.battingOrder(METS, s, 2026, "26")[0].id, "benge");
+  assert.equal(M.battingOrder(METS, s, 2027, "26")[0].pos, "RF", "later seasons inherit the order");
+  // A new starter at SS bats in the shortstop's spot.
+  s = M.moveInDepth(METS, s, 2026, { id: "baty", to: "SS", beforeId: "lindor" });
+  assert.equal(M.battingOrder(METS, s, 2026, "26")[1].id, "baty");
+});
+
+test("clicking a contract cell steps through the statuses and can take a player off the team", () => {
+  const peralta = () => M.allPlayers(METS, s).find((p) => p.id === "peralta");
+  let s = S0;
+  assert.equal(M.nextStatus(METS, peralta(), 2027), "prearb", "blank -> pre-arb");
+  for (const kind of ["prearb", "arb", "signed", "option"]) {
+    s = M.setSeasonStatus(METS, s, "peralta", 2027, kind);
+    assert.equal(M.statusFor(METS, peralta(), 2027).kind, kind);
+  }
+  assert.equal(M.lastSeason(METS, peralta()), 2027, "a set season extends his time with the team");
+  assert.ok(M.playersFor(METS, s, 2027, "26").some((p) => p.id === "peralta"));
+  assert.equal(M.nextStatus(METS, peralta(), 2027), "none");
+  s = M.setSeasonStatus(METS, s, "peralta", 2027, "none");
+  assert.equal(M.lastSeason(METS, peralta()), 2026);
+  s = M.setSeasonStatus(METS, s, "peralta", 2026, "none");
+  assert.ok(!M.playersFor(METS, s, 2026, "40").some((p) => p.id === "peralta"), "blank means not on the team");
+});
+
+test("roster status cycles 26 -> 40 -> IL -> prospect -> 26", () => {
+  const seq = [];
+  let s = S0;
+  for (let i = 0; i < 4; i++) {
+    s = M.cycleRoster(METS, s, 2026, "baty");
+    const p = M.allPlayers(METS, s).find((x) => x.id === "baty");
+    seq.push(M.rosterStatus(METS, s, p, 2026));
+  }
+  assert.deepEqual(seq, ["40", "IL", "P", "26"]);
+  // Prospects aren't on the 40-man: not counted, not on the field.
+  const p = M.editPlayer(METS, S0, "baty", { roster: "P" });
+  assert.ok(!M.playersFor(METS, p, 2026, "40").some((x) => x.id === "baty"));
+  assert.ok(!Object.values(M.depthFor(METS, p, 2026, "40")).flat().includes("baty"));
+});
+
+test("hiding a season hides it and the players whose last season it was", () => {
+  let s = M.setHidden(METS, S0, 2026, true);
+  assert.deepEqual(M.visibleSeasons(METS, s), [2027, 2028, 2029, 2030, 2031]);
+  const by = (id) => M.allPlayers(METS, s).find((p) => p.id === id);
+  assert.ok(M.hiddenWithSeasons(METS, s, by("peralta")), "Peralta's last season was 2026");
+  assert.ok(!M.hiddenWithSeasons(METS, s, by("lindor")));
+  for (const y of METS.seasons) s = M.setHidden(METS, s, y, true);
+  assert.equal(M.visibleSeasons(METS, s).length, 1, "one season always stays");
+  assert.ok(!M.hiddenWithSeasons(METS, M.setHidden(METS, s, 2026, false), by("lindor")));
+});
+
+test("players fall into position groups", () => {
+  const g = (id) => M.groupOf(METS, METS.players.find((p) => p.id === id));
+  assert.deepEqual(["alvarez", "lindor", "vientos", "soto", "peralta", "williams", "holmes"].map(g), ["C", "IF", "IF", "OF", "SP", "RP", "SP"]);
 });
 
 test("player ids never change, so saved edits keep pointing at the right players", () => {
